@@ -1,7 +1,7 @@
 """
 preprocessing.py
 ----------------
-Stage 1 — Video loading, grayscale conversion, thresholding,
+Stage 1 -- Video loading, grayscale conversion, thresholding,
 contour extraction, and visualization.
 
 Works standalone:
@@ -12,7 +12,7 @@ Works standalone:
 import cv2
 import numpy as np
 import matplotlib
-matplotlib.use("Agg")          # non-interactive backend — no display needed
+matplotlib.use("Agg")          # non-interactive backend -- no display needed
 import matplotlib.pyplot as plt
 import argparse
 import os
@@ -29,7 +29,7 @@ def load_video(path: str):
     Returns
     -------
     cap : cv2.VideoCapture
-    props : dict  — fps, width, height, frame_count
+    props : dict  -- fps, width, height, frame_count
     """
     cap = cv2.VideoCapture(path)
     if not cap.isOpened():
@@ -46,19 +46,19 @@ def load_video(path: str):
 
 def read_frames(cap, max_frames: int = None):
     """
-    Generator — yields one grayscale frame at a time.
+    Generator -- yields one grayscale frame at a time.
 
     Parameters
     ----------
     cap        : cv2.VideoCapture (already opened)
-    max_frames : int or None — stop after this many frames
+    max_frames : int or None -- stop after this many frames
     """
     count = 0
     while True:
         ok, frame = cap.read()
         if not ok:
             break
-        # Convert BGR → grayscale if the video is colour
+        # Convert BGR -> grayscale if the video is colour
         if frame.ndim == 3:
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         else:
@@ -101,7 +101,7 @@ def threshold_frame(frame: np.ndarray,
     -----
     1. If a background is given, subtract it to isolate moving objects.
     2. Gaussian blur to reduce noise.
-    3. Otsu's thresholding → binary mask.
+    3. Otsu's thresholding -> binary mask.
     4. Morphological closing to fill small holes.
 
     Parameters
@@ -119,7 +119,7 @@ def threshold_frame(frame: np.ndarray,
         diff = cv2.absdiff(frame, background)
         # Gaussian blur
         blurred = cv2.GaussianBlur(diff, (blur_ksize, blur_ksize), 0)
-        # Otsu on the difference image — bright pixels are foreground
+        # Otsu on the difference image -- bright pixels are foreground
         _, mask = cv2.threshold(blurred, 0, 255,
                                 cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     else:
@@ -128,7 +128,7 @@ def threshold_frame(frame: np.ndarray,
         # thresholding so that fly pixels become bright (foreground = high value).
         diff = frame.copy()
         blurred = cv2.GaussianBlur(diff, (blur_ksize, blur_ksize), 0)
-        # THRESH_BINARY_INV: dark fly pixels → 255, light background → 0
+        # THRESH_BINARY_INV: dark fly pixels -> 255, light background -> 0
         _, mask = cv2.threshold(blurred, 0, 255,
                                 cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
@@ -157,7 +157,7 @@ def extract_contours(mask: np.ndarray,
 
     Returns
     -------
-    contours : list of np.ndarray  — each is an (N,1,2) int32 array
+    contours : list of np.ndarray  -- each is an (N,1,2) int32 array
     """
     contours, _ = cv2.findContours(mask,
                                    cv2.RETR_EXTERNAL,
@@ -211,9 +211,9 @@ def visualize_frame(frame: np.ndarray,
                     save_path: str = None):
     """
     Display (and optionally save) a 3-panel figure:
-      Left  — original grayscale frame
-      Centre — thresholded binary mask
-      Right  — original frame with contours drawn in green
+      Left  -- original grayscale frame
+      Centre -- thresholded binary mask
+      Right  -- original frame with contours drawn in green
     """
     contour_img = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
     cv2.drawContours(contour_img, contours, -1, (0, 255, 0), 2)
@@ -238,7 +238,7 @@ def visualize_frame(frame: np.ndarray,
     if save_path:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         plt.savefig(save_path, dpi=120, bbox_inches="tight")
-        print(f"  Saved visualization → {save_path}")
+        print(f"  Saved visualization -> {save_path}")
 
     plt.close(fig)
 
@@ -289,7 +289,7 @@ def make_synthetic_video(path: str = "synthetic_test.mp4",
         writer.write(frame)
 
     writer.release()
-    print(f"  Synthetic video saved → {path}")
+    print(f"  Synthetic video saved -> {path}")
     return path
 
 

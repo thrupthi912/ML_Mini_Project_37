@@ -168,7 +168,7 @@ def _print_report(report: dict):
         if len(counts) > 1:
             ratio = max(counts) / max(min(counts), 1)
             if ratio > 3:
-                print(f"    [WARN] Class imbalance ratio {ratio:.1f}:1 — consider balancing.")
+                print(f"    [WARN] Class imbalance ratio {ratio:.1f}:1 -- consider balancing.")
     if report["n_duplicates"] > 0:
         print(f"    Duplicates: {report['n_duplicates']}")
     if report["range_errors"] > 0:
@@ -289,7 +289,7 @@ def main(input_dir: str = "input"):
     video_dir  = os.path.join(input_dir, "video")
 
     print("=" * 58)
-    print("  Dataset Validation — Fruit Fly Analysis Project")
+    print("  Dataset Validation -- Fruit Fly Analysis Project")
     print("=" * 58)
 
     if not os.path.isdir(input_dir):
@@ -298,7 +298,7 @@ def main(input_dir: str = "input"):
         print("         Download the dataset:")
         print("         https://www.dropbox.com/sh/78inyvw2ouut74a/AACc1DYrC1G0UxujwT-6ryRKa?dl=0")
         print("\n  All modules fall back to synthetic/rule-based mode without this data.")
-        print("  The pipeline itself is functional — run:  python main.py")
+        print("  The pipeline itself is functional -- run:  python main.py")
         return
 
     validate_fly_count(images_dir)

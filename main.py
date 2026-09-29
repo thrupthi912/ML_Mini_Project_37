@@ -7,12 +7,12 @@ Frame-by-frame pipeline
 -----------------------
   1. Grayscale preprocessing + background subtraction   [preprocessing.py]
   2. Otsu threshold + contour extraction                [preprocessing.py]
-  3. FlyCount  — Decision Tree (zero / one / two flies) [fly_count.py]
-  4. Orientation — image moments baseline               [orientation.py]
+  3. FlyCount  -- Decision Tree (zero / one / two flies) [fly_count.py]
+  4. Orientation -- image moments baseline               [orientation.py]
        (Stage 2 HOG disambiguation when labeled model present)
-  5. Sex classification — Logistic Regression           [sex_classification.py]
+  5. Sex classification -- Logistic Regression           [sex_classification.py]
        (skipped with a clear overlay when model unavailable)
-  6. Wing-angle regression — HOG + PCA + LinReg         [wing_angle.py]
+  6. Wing-angle regression -- HOG + PCA + LinReg         [wing_angle.py]
        (skipped with a clear overlay when model unavailable)
 
 Display
@@ -78,13 +78,13 @@ from wing_angle import (
 
 # ── Visual constants ───────────────────────────────────────────────────────
 FONT       = cv2.FONT_HERSHEY_SIMPLEX
-CLR_ONE    = (0, 200,   0)   # green  — single fly contour
-CLR_TWO    = (0, 100, 255)   # orange — merged pair contour
-CLR_ZERO   = (140, 140, 140) # grey   — noise contour
-CLR_ORIENT = (0, 220, 220)   # yellow-cyan — orientation arrow
-CLR_WING_R = (0, 140, 255)   # orange — right wing arrow
-CLR_WING_L = (255,  80,  0)  # blue   — left wing arrow
-CLR_UNAVAIL= (80,  80,  80)  # dark grey — unavailable module text
+CLR_ONE    = (0, 200,   0)   # green  -- single fly contour
+CLR_TWO    = (0, 100, 255)   # orange -- merged pair contour
+CLR_ZERO   = (140, 140, 140) # grey   -- noise contour
+CLR_ORIENT = (0, 220, 220)   # yellow-cyan -- orientation arrow
+CLR_WING_R = (0, 140, 255)   # orange -- right wing arrow
+CLR_WING_L = (255,  80,  0)  # blue   -- left wing arrow
+CLR_UNAVAIL= (80,  80,  80)  # dark grey -- unavailable module text
 CLR_WHITE  = (255, 255, 255)
 CLR_BLACK  = (  0,   0,   0)
 
@@ -180,7 +180,7 @@ def process_frame(frame: np.ndarray,
     -------
     dict with keys:
         contours    : list of OpenCV contours
-        labels      : list of str  ("zero"/"one"/"two") — fly count per contour
+        labels      : list of str  ("zero"/"one"/"two") -- fly count per contour
         counts      : list of int  (0/1/2)
         orientations: list of float or None  (radians)
         sexes       : list of str or None    ("male"/"female"/"unknown")
@@ -295,9 +295,9 @@ def annotate_frame(frame: np.ndarray,
     -----------------------
     - Coloured outline (green=one, orange=two, grey=zero)
     - Fly-count label + area in pixels
-    - Orientation arrow (cyan)  — always drawn from moments baseline or model
-    - Sex label (orange=male, blue=female) — drawn only when model is available
-    - Wing angle arrows (orange=right, blue=left) — drawn only when available
+    - Orientation arrow (cyan)  -- always drawn from moments baseline or model
+    - Sex label (orange=male, blue=female) -- drawn only when model is available
+    - Wing angle arrows (orange=right, blue=left) -- drawn only when available
 
     HUD (top-left corner)
     ---------------------
@@ -424,11 +424,11 @@ def save_summary_figure(annotated_bgr_frames: list,
             fontsize=8,
         )
         ax.axis("off")
-    plt.suptitle("Fruit Fly Pipeline — Annotated Frames", fontsize=11)
+    plt.suptitle("Fruit Fly Pipeline -- Annotated Frames", fontsize=11)
     plt.tight_layout()
     plt.savefig(save_path, dpi=130, bbox_inches="tight")
     plt.close(fig)
-    print(f"  Summary figure → {save_path}")
+    print(f"  Summary figure -> {save_path}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -446,10 +446,10 @@ def _print_frame_result(frame_idx: int, result: dict, fps: float):
             result["labels"], result["counts"],
             result["orientations"], result["sexes"])):
 
-        ang_s = f"{np.degrees(ang):+6.1f}°" if ang is not None else "  N/A  "
+        ang_s = f"{np.degrees(ang):+6.1f} deg" if ang is not None else "  N/A  "
         sx_s  = sx if sx is not None else "N/A"
         wi    = result["wing_info"].get(i)
-        wing_s = (f"R{np.degrees(wi['right']):+.0f}° L{np.degrees(wi['left']):+.0f}°"
+        wing_s = (f"R{np.degrees(wi['right']):+.0f} deg L{np.degrees(wi['left']):+.0f} deg"
                   if wi else "")
 
         print(f"    [{i}] {lbl:4s} n={cnt}  "
@@ -484,7 +484,7 @@ def main(video_path: str = None,
 
     Parameters
     ----------
-    video_path  : path to an .mp4 file.  None → synthetic demo video.
+    video_path  : path to an .mp4 file.  None -> synthetic demo video.
     do_train    : if True, retrain FlyCount before running.
     max_frames  : number of frames to process.
     save_dir    : directory for all output files.
@@ -493,7 +493,7 @@ def main(video_path: str = None,
     os.makedirs(save_dir, exist_ok=True)
 
     print("=" * 62)
-    print("  Fruit Fly Video Analysis — Group 37")
+    print("  Fruit Fly Video Analysis -- Group 37")
     print("=" * 62)
 
     # ── Optional retrain ────────────────────────────────────────────────────
@@ -510,7 +510,7 @@ def main(video_path: str = None,
 
     # Auto-train FlyCount if its model is missing
     if not models["fly_count"]["ok"]:
-        print("\n[AUTO]  FlyCount model missing — training on synthetic data ...")
+        print("\n[AUTO]  FlyCount model missing -- training on synthetic data ...")
         try:
             train_fly_count()
             clf, le = load_fly_count_model("models/fly_count_model.joblib")
@@ -560,7 +560,7 @@ def main(video_path: str = None,
             cv2.resizeWindow(WIN, 960, 480)
         except Exception:
             display = False
-            print("  [WARN] OpenCV display unavailable — headless mode.")
+            print("  [WARN] OpenCV display unavailable -- headless mode.")
 
     # ── Frame loop ───────────────────────────────────────────────────────────
     print(f"\n[RUN]   Processing frames ...\n")
@@ -647,7 +647,7 @@ def main(video_path: str = None,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Fruit fly video analysis — integrated ML pipeline (Group 37)",
+        description="Fruit fly video analysis -- integrated ML pipeline (Group 37)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples

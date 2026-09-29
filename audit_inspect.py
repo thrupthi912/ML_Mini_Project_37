@@ -1,5 +1,5 @@
 """
-audit_inspect.py — run once to collect diagnostic information for the audit.
+audit_inspect.py -- run once to collect diagnostic information for the audit.
 """
 import joblib
 import numpy as np
@@ -26,13 +26,13 @@ if os.path.isfile(fc_path):
     print(f"  type        : {type(clf).__name__}")
     print(f"  depth       : {clf.get_depth()}")
     print(f"  le.classes_ : {le.classes_}")
-    print(f"  one→{le.transform(['one'])[0]}  two→{le.transform(['two'])[0]}  zero→{le.transform(['zero'])[0]}")
+    print(f"  one->{le.transform(['one'])[0]}  two->{le.transform(['two'])[0]}  zero->{le.transform(['zero'])[0]}")
     print(f"  feature_importances: {dict(zip(['area','perimeter','aspect_ratio','extent','solidity'], clf.feature_importances_.round(3)))}")
 
     # Critical check: does the synthetic dataset y-array match le.classes_ order?
-    # le.fit(["zero","one","two"]) → alphabetical → one=0, two=1, zero=2
+    # le.fit(["zero","one","two"]) -> alphabetical -> one=0, two=1, zero=2
     # The old bug had y=[0,1,2] meaning zero,one,two (wrong).
-    # The fixed code uses le.transform(labels_str) — verify:
+    # The fixed code uses le.transform(labels_str) -- verify:
     expected_one  = le.transform(["one"])[0]   # should be 0
     expected_two  = le.transform(["two"])[0]   # should be 1
     expected_zero = le.transform(["zero"])[0]  # should be 2
@@ -43,7 +43,7 @@ if os.path.isfile(fc_path):
     if expected_one == 0:
         print("  [OK] LabelEncoder ordering is correct after fix.")
     else:
-        print("  [BUG] LabelEncoder ordering mismatch — model predictions will be wrong!")
+        print("  [BUG] LabelEncoder ordering mismatch -- model predictions will be wrong!")
         issues.append("CRITICAL: LabelEncoder order mismatch in fly_count model")
 else:
     print("[MISS] fly_count_model.joblib not found")
@@ -69,16 +69,16 @@ for side in ["right", "left"]:
 # ── 3. PCA leakage check in wing_angle.py ─────────────────────────────────
 print(f"\n[PCA leakage check]")
 # PCA is wrapped in sklearn Pipeline: Pipeline([("pca", PCA(...)), ("regressor", LR())])
-# Pipeline.fit(X_train, y_train) fits PCA only on X_train → NO leakage ✓
+# Pipeline.fit(X_train, y_train) fits PCA only on X_train -> NO leakage ✓
 # But we need to verify that train_test_split is called BEFORE build_feature_matrix
 # in the training path. Reading wing_angle.py: build_feature_matrix is called on ALL
 # patches BEFORE train_test_split. The HOG step is not data-dependent (it is a fixed
-# transform), but PCA is fitted inside the Pipeline on X_train only → OK.
-print("  HOG: deterministic transform — not data-dependent, no leakage risk")
-print("  PCA: inside sklearn Pipeline, fitted on X_train only → NO leakage")
+# transform), but PCA is fitted inside the Pipeline on X_train only -> OK.
+print("  HOG: deterministic transform -- not data-dependent, no leakage risk")
+print("  PCA: inside sklearn Pipeline, fitted on X_train only -> NO leakage")
 checks.append(("Wing PCA not leaking", True))
 
-# ── 4. orientation.py — degenerate moment handling ────────────────────────
+# ── 4. orientation.py -- degenerate moment handling ────────────────────────
 print(f"\n[Orientation moments edge cases]")
 import cv2
 # Test 1: circular patch (should return 0.0)
@@ -87,27 +87,27 @@ cv2.circle(patch_circle, (32, 32), 15, 30, -1)
 from orientation import moments_orientation
 angle_circle = moments_orientation(patch_circle)
 checks.append(("Circular blob returns 0.0", abs(angle_circle) < 0.01))
-print(f"  Circular blob angle: {np.degrees(angle_circle):.2f}°  (expected ~0.0°)")
+print(f"  Circular blob angle: {np.degrees(angle_circle):.2f} deg  (expected ~0.0 deg)")
 
 # Test 2: empty patch (all background)
 patch_empty = np.full((64, 64), 200, dtype=np.uint8)
 angle_empty = moments_orientation(patch_empty)
 checks.append(("Empty patch returns 0.0", abs(angle_empty) < 0.01))
-print(f"  Empty patch angle:   {np.degrees(angle_empty):.2f}°  (expected 0.0°)")
+print(f"  Empty patch angle:   {np.degrees(angle_empty):.2f} deg  (expected 0.0 deg)")
 
 # Test 3: horizontal ellipse
 patch_horiz = np.full((64, 64), 200, dtype=np.uint8)
 cv2.ellipse(patch_horiz, (32, 32), (25, 5), 0, 0, 360, 30, -1)
 angle_horiz = moments_orientation(patch_horiz)
-checks.append(("Horizontal ellipse near 0°", abs(np.degrees(angle_horiz)) < 5))
-print(f"  Horizontal ellipse:  {np.degrees(angle_horiz):.2f}°  (expected ~0°)")
+checks.append(("Horizontal ellipse near 0 deg", abs(np.degrees(angle_horiz)) < 5))
+print(f"  Horizontal ellipse:  {np.degrees(angle_horiz):.2f} deg  (expected ~0 deg)")
 
 # Test 4: 45-degree ellipse
 patch_diag = np.full((64, 64), 200, dtype=np.uint8)
 cv2.ellipse(patch_diag, (32, 32), (25, 5), 45, 0, 360, 30, -1)
 angle_diag = moments_orientation(patch_diag)
-checks.append(("45° ellipse near ±45°", abs(abs(np.degrees(angle_diag)) - 45) < 5))
-print(f"  45° ellipse:         {np.degrees(angle_diag):.2f}°  (expected ~±45°)")
+checks.append(("45 deg ellipse near ±45 deg", abs(abs(np.degrees(angle_diag)) - 45) < 5))
+print(f"  45 deg ellipse:         {np.degrees(angle_diag):.2f} deg  (expected ~±45 deg)")
 
 # ── 5. preprocessing edge cases ───────────────────────────────────────────
 print(f"\n[Preprocessing edge cases]")
@@ -117,7 +117,7 @@ from preprocessing import threshold_frame, extract_contours, contour_features
 frame_empty = np.full((240, 320), 200, dtype=np.uint8)
 mask_empty = threshold_frame(frame_empty)
 contours_empty = extract_contours(mask_empty)
-checks.append(("Empty frame → 0 contours", len(contours_empty) == 0))
+checks.append(("Empty frame -> 0 contours", len(contours_empty) == 0))
 print(f"  Empty frame contours: {len(contours_empty)}  (expected 0)")
 
 # Single blob
@@ -125,7 +125,7 @@ frame_one = np.full((240, 320), 200, dtype=np.uint8)
 cv2.ellipse(frame_one, (160, 120), (12, 7), 0, 0, 360, 30, -1)
 mask_one = threshold_frame(frame_one)
 contours_one = extract_contours(mask_one)
-checks.append(("Single blob → 1 contour", len(contours_one) == 1))
+checks.append(("Single blob -> 1 contour", len(contours_one) == 1))
 print(f"  Single blob contours: {len(contours_one)}  (expected 1)")
 
 # contour_features stability with degenerate contour (tiny 1-point)
@@ -147,14 +147,14 @@ clf2, le2 = load_model(fc_path)
 for c in contours_one:
     pred = predict_fly_count(clf2, le2, c)
     count = label_to_count(pred)
-    print(f"  Single fly contour → label='{pred}' count={count}  (expected: one, 1)")
+    print(f"  Single fly contour -> label='{pred}' count={count}  (expected: one, 1)")
     checks.append(("Single fly contour predicts 'one'", pred == "one"))
 
 # ── 7. cap.release() verified in all load paths ───────────────────────────
 print(f"\n[Resource leak check]")
 # Check: compute_background rewinds before returning (cap.set(POS_FRAMES,0))
 # Check: all cap.release() calls present in main.py
-# These are code-reading checks — marking as passed from inspection
+# These are code-reading checks -- marking as passed from inspection
 checks.append(("cap.release() present in main loop", True))
 checks.append(("compute_background rewinds cap", True))
 print("  cap.release() verified in main.py frame loop")
@@ -209,10 +209,10 @@ if os.path.isdir(input_dir):
             print(f"    input/{sub}/: {len(files)} files")
         else:
             print(f"    input/{sub}/: NOT FOUND")
-            issues.append(f"INFO: input/{sub}/ missing — real data not available")
+            issues.append(f"INFO: input/{sub}/ missing -- real data not available")
 else:
-    print("  input/ directory does not exist — real data not available")
-    issues.append("INFO: input/ directory missing — synthetic mode only")
+    print("  input/ directory does not exist -- real data not available")
+    issues.append("INFO: input/ directory missing -- synthetic mode only")
 
 # ── SUMMARY ───────────────────────────────────────────────────────────────
 print("\n" + "=" * 60)

@@ -1,5 +1,5 @@
 """
-wing_angle.py  — Member 1, Stage 4
+wing_angle.py  -- Member 1, Stage 4
 -------------------------------------
 Wing-angle estimation for male fruit flies.
 
@@ -26,10 +26,10 @@ Data policy
 -----------
 This module checks for labeled wing-angle annotations at startup.
 
-  FOUND  → full pipeline: preprocessing, HOG, PCA, LinearRegression,
+  FOUND  -> full pipeline: preprocessing, HOG, PCA, LinearRegression,
             evaluation on a real test set, model saved.
 
-  MISSING → preprocessing and visualization run fully (so you can inspect
+  MISSING -> preprocessing and visualization run fully (so you can inspect
             what the pipeline sees), but NO regression model is trained,
             NO predictions are fabricated, and NO accuracy numbers are
             reported.  A clear explanation of what data is needed is printed.
@@ -130,7 +130,7 @@ def check_for_labeled_data(csv_path: str) -> bool:
         _print_data_instructions(csv_path)
         return False
 
-    print(f"[DATA CHECK] FOUND — {len(rows)} labeled rows.")
+    print(f"[DATA CHECK] FOUND -- {len(rows)} labeled rows.")
     return True
 
 
@@ -146,10 +146,10 @@ def _print_data_instructions(csv_path: str):
     print("    ...")
     print()
     print("  What each column means:")
-    print("    patch_path       — 64×64 grayscale PNG of the male fly ROI")
-    print("    angle_right_rad  — angle of the right wing from the body axis")
+    print("    patch_path       -- 64×64 grayscale PNG of the male fly ROI")
+    print("    angle_right_rad  -- angle of the right wing from the body axis")
     print("                       measured in radians, range (0, pi)")
-    print("    angle_left_rad   — same for the left wing")
+    print("    angle_left_rad   -- same for the left wing")
     print()
     print("  How to collect labels:")
     print("    1. Download the CS229 labeled dataset (see README.md).")
@@ -162,7 +162,7 @@ def _print_data_instructions(csv_path: str):
 
 
 # ---------------------------------------------------------------------------
-# STEP 1 — PATCH EXTRACTION AND PREPROCESSING
+# STEP 1 -- PATCH EXTRACTION AND PREPROCESSING
 # ---------------------------------------------------------------------------
 
 def extract_fly_patch(frame: np.ndarray,
@@ -191,8 +191,8 @@ def preprocess_patch(patch: np.ndarray) -> np.ndarray:
 
     Steps
     -----
-    1. Gaussian blur (3×3) — suppresses high-frequency sensor noise.
-    2. CLAHE (Contrast Limited Adaptive Histogram Equalization) —
+    1. Gaussian blur (3×3) -- suppresses high-frequency sensor noise.
+    2. CLAHE (Contrast Limited Adaptive Histogram Equalization) --
        enhances local contrast so the thin wing edges become detectable
        by HOG even if the original patch has low contrast.
 
@@ -208,10 +208,10 @@ def split_wing_regions(patch: np.ndarray):
     """
     Split the fly patch into left and right wing sub-regions.
 
-    Layout (patch_w=64, WING_FRACTION=0.45 → wing_w=28 px):
-      columns  0..27  → left wing region
-      columns 28..35  → body centre (discarded)
-      columns 36..63  → right wing region
+    Layout (patch_w=64, WING_FRACTION=0.45 -> wing_w=28 px):
+      columns  0..27  -> left wing region
+      columns 28..35  -> body centre (discarded)
+      columns 36..63  -> right wing region
 
     The male fly is assumed to be centred in the patch with its body
     running roughly vertically.  Wings extend horizontally on both sides.
@@ -226,7 +226,7 @@ def split_wing_regions(patch: np.ndarray):
 
 
 # ---------------------------------------------------------------------------
-# STEP 2 — HOG FEATURE EXTRACTION
+# STEP 2 -- HOG FEATURE EXTRACTION
 # ---------------------------------------------------------------------------
 
 def hog_features(region: np.ndarray) -> np.ndarray:
@@ -238,8 +238,8 @@ def hog_features(region: np.ndarray) -> np.ndarray:
 
     Why HOG for wings?
     HOG encodes the distribution of local edge orientations in overlapping
-    spatial blocks.  A wing at 60° from the body axis creates a dominant
-    gradient direction at 60°; a wing at 120° creates gradients at 120°.
+    spatial blocks.  A wing at 60 deg from the body axis creates a dominant
+    gradient direction at 60 deg; a wing at 120 deg creates gradients at 120 deg.
     This makes HOG highly informative about wing angle.
 
     Returns
@@ -259,7 +259,7 @@ def hog_features(region: np.ndarray) -> np.ndarray:
 
 def patch_to_hog_vector(patch: np.ndarray) -> np.ndarray:
     """
-    Full pipeline: preprocess patch → split → HOG left + HOG right → concat.
+    Full pipeline: preprocess patch -> split -> HOG left + HOG right -> concat.
 
     Returns
     -------
@@ -310,7 +310,7 @@ def load_labeled_data(csv_path: str):
 
 
 # ---------------------------------------------------------------------------
-# STEP 3+4 — PCA + LINEAR REGRESSION
+# STEP 3+4 -- PCA + LINEAR REGRESSION
 # ---------------------------------------------------------------------------
 
 def train_wing_angle_model(X: np.ndarray,
@@ -330,7 +330,7 @@ def train_wing_angle_model(X: np.ndarray,
     Why Linear Regression?
       Wing angle is a continuous scalar in (0, pi).  The relationship
       between HOG gradient magnitudes and angle is approximately linear
-      in the PCA subspace — validated empirically in the CS229 paper.
+      in the PCA subspace -- validated empirically in the CS229 paper.
 
     Parameters
     ----------
@@ -340,7 +340,7 @@ def train_wing_angle_model(X: np.ndarray,
 
     Returns
     -------
-    model  : fitted Pipeline(PCA → LinearRegression)
+    model  : fitted Pipeline(PCA -> LinearRegression)
     X_test : held-out HOG features  (25%)
     y_test : true test angles
     y_pred : predicted test angles
@@ -380,8 +380,8 @@ def evaluate_regression(y_test: np.ndarray,
     rmse = float(np.sqrt(mean_squared_error(y_test, y_pred)))
 
     print(f"\n  [{wing.upper()} WING]")
-    print(f"    MAE  = {mae:.4f} rad  ({np.degrees(mae):.2f}°)")
-    print(f"    RMSE = {rmse:.4f} rad  ({np.degrees(rmse):.2f}°)")
+    print(f"    MAE  = {mae:.4f} rad  ({np.degrees(mae):.2f} deg)")
+    print(f"    RMSE = {rmse:.4f} rad  ({np.degrees(rmse):.2f} deg)")
 
     fig, ax = plt.subplots(figsize=(5, 5))
     ax.scatter(np.degrees(y_test), np.degrees(y_pred),
@@ -389,23 +389,23 @@ def evaluate_regression(y_test: np.ndarray,
     lims = [min(np.degrees(y_test).min(), np.degrees(y_pred).min()) - 5,
             max(np.degrees(y_test).max(), np.degrees(y_pred).max()) + 5]
     ax.plot(lims, lims, "r--", label="Perfect prediction")
-    ax.set_xlabel("True angle (°)")
-    ax.set_ylabel("Predicted angle (°)")
-    ax.set_title(f"Wing Angle Regression — {wing} wing\n"
-                 f"MAE = {np.degrees(mae):.1f}°   RMSE = {np.degrees(rmse):.1f}°")
+    ax.set_xlabel("True angle ( deg)")
+    ax.set_ylabel("Predicted angle ( deg)")
+    ax.set_title(f"Wing Angle Regression -- {wing} wing\n"
+                 f"MAE = {np.degrees(mae):.1f} deg   RMSE = {np.degrees(rmse):.1f} deg")
     ax.legend(fontsize=8)
     plt.tight_layout()
 
     path = os.path.join(save_dir, f"wing_angle_{wing}_scatter.png")
     plt.savefig(path, dpi=120)
     plt.close(fig)
-    print(f"    Saved scatter plot → {path}")
+    print(f"    Saved scatter plot -> {path}")
 
     return mae, rmse
 
 
 # ---------------------------------------------------------------------------
-# VISUALIZATION — preprocessing pipeline output
+# VISUALIZATION -- preprocessing pipeline output
 # ---------------------------------------------------------------------------
 
 def visualize_patch_pipeline(patch: np.ndarray,
@@ -460,7 +460,7 @@ def visualize_patch_pipeline(patch: np.ndarray,
     if angle_right is not None and angle_left is not None:
         cx, cy   = PATCH_W // 2, PATCH_H // 2
         arm      = 22
-        # Right wing arrow (pointing right of body axis = 0°)
+        # Right wing arrow (pointing right of body axis = 0 deg)
         rx = int(cx + arm * np.cos(angle_right))
         ry = int(cy - arm * np.sin(angle_right))
         cv2.arrowedLine(vis_pre, (cx, cy),
@@ -473,36 +473,36 @@ def visualize_patch_pipeline(patch: np.ndarray,
                         (np.clip(lx,0,PATCH_W-1), np.clip(ly,0,PATCH_H-1)),
                         (0, 80, 220), 2, tipLength=0.3)
         title2 = (f"Preprocessed + true angles\n"
-                  f"R={np.degrees(angle_right):.0f}°  "
-                  f"L={np.degrees(angle_left):.0f}°")
+                  f"R={np.degrees(angle_right):.0f} deg  "
+                  f"L={np.degrees(angle_left):.0f} deg")
     else:
         title2 = "Preprocessed (blur + CLAHE)\nNo labels available"
 
     axes[1].imshow(cv2.cvtColor(vis_pre, cv2.COLOR_BGR2RGB))
     axes[1].set_title(title2, fontsize=8)
 
-    # Panels 3–4: wing sub-regions
+    # Panels 3-4: wing sub-regions
     axes[2].imshow(left_w,  cmap="gray", vmin=0, vmax=255)
     axes[2].set_title("Left wing region", fontsize=9)
     axes[3].imshow(right_w, cmap="gray", vmin=0, vmax=255)
     axes[3].set_title("Right wing region", fontsize=9)
 
-    # Panels 5–6: HOG visualizations
+    # Panels 5-6: HOG visualizations
     axes[4].imshow(hog_l, cmap="gray")
-    axes[4].set_title("HOG — left wing", fontsize=9)
+    axes[4].set_title("HOG -- left wing", fontsize=9)
     axes[5].imshow(hog_r, cmap="gray")
-    axes[5].set_title("HOG — right wing", fontsize=9)
+    axes[5].set_title("HOG -- right wing", fontsize=9)
 
     for ax in axes:
         ax.axis("off")
 
-    fig.suptitle("Wing-Angle Module — Preprocessing Pipeline", fontsize=11)
+    fig.suptitle("Wing-Angle Module -- Preprocessing Pipeline", fontsize=11)
     plt.tight_layout()
 
     if save_path:
         os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)
         plt.savefig(save_path, dpi=130, bbox_inches="tight")
-        print(f"  Saved preprocessing visualization → {save_path}")
+        print(f"  Saved preprocessing visualization -> {save_path}")
 
     plt.close(fig)
 
@@ -555,8 +555,8 @@ def visualize_wing_angles_on_frame(frame: np.ndarray,
     axes[1].imshow(cv2.cvtColor(vis, cv2.COLOR_BGR2RGB))
     axes[1].set_title(
         f"Wing Angles\n"
-        f"Right: {np.degrees(angle_right):.1f}°  "
-        f"Left: {np.degrees(angle_left):.1f}°",
+        f"Right: {np.degrees(angle_right):.1f} deg  "
+        f"Left: {np.degrees(angle_left):.1f} deg",
         fontsize=9,
     )
     axes[1].axis("off")
@@ -569,13 +569,13 @@ def visualize_wing_angles_on_frame(frame: np.ndarray,
     ]
     axes[1].legend(handles=legend, loc="lower right", fontsize=7)
 
-    fig.suptitle("Wing-Angle Module — Frame Visualization", fontsize=11)
+    fig.suptitle("Wing-Angle Module -- Frame Visualization", fontsize=11)
     plt.tight_layout()
 
     if save_path:
         os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)
         plt.savefig(save_path, dpi=130, bbox_inches="tight")
-        print(f"  Saved frame visualization → {save_path}")
+        print(f"  Saved frame visualization -> {save_path}")
 
     plt.close(fig)
 
@@ -589,7 +589,7 @@ def save_wing_models(model_right, model_left):
                         (MODEL_PATH_L, model_left)]:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         joblib.dump(model, path)
-        print(f"  Model saved → {path}")
+        print(f"  Model saved -> {path}")
 
 
 def load_wing_models(model_dir: str = "models"):
@@ -627,7 +627,7 @@ def predict_wing_angles(model_right, model_left, patch: np.ndarray):
 
 
 # ---------------------------------------------------------------------------
-# DEMO — extract a real patch from the video and run preprocessing vis
+# DEMO -- extract a real patch from the video and run preprocessing vis
 # ---------------------------------------------------------------------------
 
 def _run_preprocessing_demo(video_path: str, save_dir: str):
@@ -687,7 +687,7 @@ def main(csv_path: str = DEFAULT_CSV,
     os.makedirs(save_dir, exist_ok=True)
 
     print("=" * 58)
-    print("  Wing-Angle Module — Stage 4")
+    print("  Wing-Angle Module -- Stage 4")
     print("=" * 58)
     print()
 
@@ -698,7 +698,7 @@ def main(csv_path: str = DEFAULT_CSV,
     print()
     print("[PREPROCESS]  Running preprocessing demo on a video frame ...")
     if video_path is None or not os.path.exists(video_path):
-        print("              No video path provided — generating synthetic video ...")
+        print("              No video path provided -- generating synthetic video ...")
         video_path = make_synthetic_video()
     _run_preprocessing_demo(video_path, save_dir)
 
@@ -706,7 +706,7 @@ def main(csv_path: str = DEFAULT_CSV,
         # ── No labels: stop here cleanly ─────────────────────────────────
         print()
         print("[STATUS]  Preprocessing and visualization complete.")
-        print("          Regression model NOT trained — labeled data required.")
+        print("          Regression model NOT trained -- labeled data required.")
         print(f"          Provide: {csv_path}")
         print("          predict_wing_angles() returns None until models exist.")
         return
@@ -718,7 +718,7 @@ def main(csv_path: str = DEFAULT_CSV,
     print(f"        {len(patches)} patches loaded.")
 
     if len(patches) < 10:
-        print("[WARN]  Fewer than 10 patches loaded — results will be unreliable.")
+        print("[WARN]  Fewer than 10 patches loaded -- results will be unreliable.")
 
     # Show sample patches with true labels
     n_show = min(6, len(patches))
@@ -727,15 +727,15 @@ def main(csv_path: str = DEFAULT_CSV,
         axes = [axes]
     for i, ax in enumerate(axes):
         ax.imshow(patches[i], cmap="gray", vmin=0, vmax=255)
-        ax.set_title(f"R:{np.degrees(angles_right[i]):.0f}°\n"
-                     f"L:{np.degrees(angles_left[i]):.0f}°", fontsize=8)
+        ax.set_title(f"R:{np.degrees(angles_right[i]):.0f} deg\n"
+                     f"L:{np.degrees(angles_left[i]):.0f} deg", fontsize=8)
         ax.axis("off")
     fig.suptitle("Sample Labeled Patches (true wing angles)", fontsize=10)
     plt.tight_layout()
     sample_path = os.path.join(save_dir, "wing_angle_labeled_samples.png")
     plt.savefig(sample_path, dpi=120)
     plt.close(fig)
-    print(f"  Saved labeled samples → {sample_path}")
+    print(f"  Saved labeled samples -> {sample_path}")
 
     # Detailed pipeline visualization for the first labeled patch
     visualize_patch_pipeline(patches[0],
@@ -777,10 +777,10 @@ def main(csv_path: str = DEFAULT_CSV,
 
     print()
     print("[DONE]  Wing-angle module trained on real labeled data.")
-    print(f"        Right wing — MAE: {np.degrees(mae_r):.2f}°  "
-          f"RMSE: {np.degrees(rmse_r):.2f}°")
-    print(f"        Left  wing — MAE: {np.degrees(mae_l):.2f}°  "
-          f"RMSE: {np.degrees(rmse_l):.2f}°")
+    print(f"        Right wing -- MAE: {np.degrees(mae_r):.2f} deg  "
+          f"RMSE: {np.degrees(rmse_r):.2f} deg")
+    print(f"        Left  wing -- MAE: {np.degrees(mae_l):.2f} deg  "
+          f"RMSE: {np.degrees(rmse_l):.2f} deg")
 
 
 # ---------------------------------------------------------------------------

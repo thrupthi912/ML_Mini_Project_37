@@ -1,29 +1,29 @@
 """
-fly_count.py  — Member 1, Stage 1
+fly_count.py  -- Member 1, Stage 1
 -----------------------------------
 FlyCount module: classifies each contour blob as containing
-  "zero"  — background noise / not a fly
-  "one"   — a single fly
-  "two"   — two flies merged into one blob
+  "zero"  -- background noise / not a fly
+  "one"   -- a single fly
+  "two"   -- two flies merged into one blob
 
 Data check at startup
 ---------------------
 The module first checks for labeled training data at:
     input/images/fly_count_labels.csv
 
-  FOUND  → trains a DecisionTreeClassifier on real labels.
-  MISSING → falls back to a rule-based baseline (area thresholds).
+  FOUND  -> trains a DecisionTreeClassifier on real labels.
+  MISSING -> falls back to a rule-based baseline (area thresholds).
             The baseline is clearly flagged in all output and has
             documented limitations (see rule_based_predict below).
 
 Pipeline
 --------
-1. Grayscale frame  →  background subtraction
-2. Gaussian blur + Otsu threshold  →  binary mask
-3. cv2.findContours  →  contour list
+1. Grayscale frame  ->  background subtraction
+2. Gaussian blur + Otsu threshold  ->  binary mask
+3. cv2.findContours  ->  contour list
 4. Per contour: extract area, perimeter, aspect_ratio, extent, solidity
-5. Decision Tree (or rule-based baseline)  →  label per contour
-6. Sum labels  →  total fly count for the frame
+5. Decision Tree (or rule-based baseline)  ->  label per contour
+6. Sum labels  ->  total fly count for the frame
 7. Visualize: frame + mask + annotated contours with predicted labels
 
 Usage
@@ -62,9 +62,9 @@ CLASS_NAMES   = ["zero", "one", "two"]
 
 # Color map for drawing contours (BGR for OpenCV)
 LABEL_COLORS_BGR = {
-    "zero": (160, 160, 160),   # grey  — noise
-    "one":  (0,   200,   0),   # green — single fly
-    "two":  (0,   100, 255),   # orange — two flies merged
+    "zero": (160, 160, 160),   # grey  -- noise
+    "one":  (0,   200,   0),   # green -- single fly
+    "two":  (0,   100, 255),   # orange -- two flies merged
 }
 # Same colors in RGB for matplotlib
 LABEL_COLORS_RGB = {
@@ -125,9 +125,9 @@ def rule_based_predict(contour) -> str:
 
     Rules
     -----
-    area < 80                    → "zero"  (noise blob)
-    area >= 80 AND solidity > 0.85 → "one"   (compact single fly)
-    area >= 80 AND solidity <= 0.85 → "two"  (merged pair, less compact)
+    area < 80                    -> "zero"  (noise blob)
+    area >= 80 AND solidity > 0.85 -> "one"   (compact single fly)
+    area >= 80 AND solidity <= 0.85 -> "two"  (merged pair, less compact)
 
     Why area?
       A single fruit fly occupies roughly 200-350 px² in a 320×240 arena.
@@ -135,14 +135,14 @@ def rule_based_predict(contour) -> str:
       Noise/dust blobs are typically smaller than 80 px².
 
     Why solidity (area / convex_hull_area)?
-      A single fly body is a compact ellipse → solidity ~0.90–0.98.
-      Two merged flies form a "figure-8" or irregular shape → solidity ~0.65–0.80.
+      A single fly body is a compact ellipse -> solidity ~0.90-0.98.
+      Two merged flies form a "figure-8" or irregular shape -> solidity ~0.65-0.80.
 
-    LIMITATIONS — this baseline will fail when:
+    LIMITATIONS -- this baseline will fail when:
       1. Camera distance or arena size differs from the training conditions,
          making the pixel area thresholds incorrect.
       2. Flies are partially occluded by the arena wall, reducing apparent area.
-      3. Debris or reflections create blobs in the 80–350 px² range.
+      3. Debris or reflections create blobs in the 80-350 px² range.
       4. Two flies are touching but happen to be well-aligned, giving high
          solidity and being misclassified as "one".
       5. A single fly is at the edge of the frame and clipped, reducing area.
@@ -202,7 +202,7 @@ def load_labeled_data(csv_path: str):
 def make_synthetic_dataset(n_per_class: int = 150, random_state: int = 42):
     """
     Synthetic feature distributions calibrated to the synthetic video
-    (320×240 arena, ellipse flies ~12×7 px → area ≈265 px²).
+    (320×240 arena, ellipse flies ~12×7 px -> area ≈265 px²).
 
     NOTE: This is only used to demonstrate the Decision Tree pipeline.
     Performance on real video data will differ.
@@ -291,7 +291,7 @@ def label_to_count(label: str) -> int:
 
 
 # ---------------------------------------------------------------------------
-# VISUALIZATION — contours + predicted labels on a frame
+# VISUALIZATION -- contours + predicted labels on a frame
 # ---------------------------------------------------------------------------
 
 def visualize_predictions(frame: np.ndarray,
@@ -303,9 +303,9 @@ def visualize_predictions(frame: np.ndarray,
                            save_path: str = None):
     """
     Draw a 3-panel figure:
-      Panel 1 — Grayscale frame
-      Panel 2 — Binary mask (Otsu threshold)
-      Panel 3 — Frame with contours drawn and labelled:
+      Panel 1 -- Grayscale frame
+      Panel 2 -- Binary mask (Otsu threshold)
+      Panel 3 -- Frame with contours drawn and labelled:
                    green outline  = "one" fly
                    orange outline = "two" flies merged
                    grey outline   = "zero" (noise)
@@ -390,13 +390,13 @@ def visualize_predictions(frame: np.ndarray,
                    loc="lower right", fontsize=7,
                    framealpha=0.7)
 
-    fig.suptitle("FlyCount — Contour Prediction Visualization", fontsize=12)
+    fig.suptitle("FlyCount -- Contour Prediction Visualization", fontsize=12)
     plt.tight_layout()
 
     if save_path:
         os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)
         plt.savefig(save_path, dpi=130, bbox_inches="tight")
-        print(f"  Saved visualization → {save_path}")
+        print(f"  Saved visualization -> {save_path}")
 
     plt.close(fig)
 
@@ -423,12 +423,12 @@ def evaluate(clf, X_test, y_test, y_pred, le, save_dir: str = "output"):
     fig, ax = plt.subplots(figsize=(5, 4))
     ConfusionMatrixDisplay(confusion_matrix=cm,
                            display_labels=class_labels).plot(ax=ax, colorbar=False)
-    ax.set_title("Fly Count — Confusion Matrix")
+    ax.set_title("Fly Count -- Confusion Matrix")
     plt.tight_layout()
     cm_path = os.path.join(save_dir, "confusion_matrix_fly_count.png")
     plt.savefig(cm_path, dpi=120)
     plt.close(fig)
-    print(f"  Saved confusion matrix  → {cm_path}")
+    print(f"  Saved confusion matrix  -> {cm_path}")
 
     # Decision tree diagram
     fig2, ax2 = plt.subplots(figsize=(16, 7))
@@ -437,18 +437,18 @@ def evaluate(clf, X_test, y_test, y_pred, le, save_dir: str = "output"):
               class_names=list(class_labels),
               filled=True, rounded=True,
               ax=ax2, fontsize=8)
-    ax2.set_title("Decision Tree — Fly Count Classifier")
+    ax2.set_title("Decision Tree -- Fly Count Classifier")
     tree_path = os.path.join(save_dir, "tree_fly_count.png")
     plt.savefig(tree_path, dpi=120, bbox_inches="tight")
     plt.close(fig2)
-    print(f"  Saved decision tree     → {tree_path}")
+    print(f"  Saved decision tree     -> {tree_path}")
 
     # Text tree
     txt = export_text(clf, feature_names=FEATURE_NAMES)
     txt_path = os.path.join(save_dir, "tree_fly_count.txt")
     with open(txt_path, "w") as f:
         f.write(txt)
-    print(f"  Saved tree text         → {txt_path}")
+    print(f"  Saved tree text         -> {txt_path}")
 
     return acc
 
@@ -460,7 +460,7 @@ def evaluate(clf, X_test, y_test, y_pred, le, save_dir: str = "output"):
 def save_model(clf, le, path: str = "models/fly_count_model.joblib"):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     joblib.dump({"clf": clf, "le": le}, path)
-    print(f"  Model saved → {path}")
+    print(f"  Model saved -> {path}")
 
 
 def load_model(path: str = "models/fly_count_model.joblib"):
@@ -479,14 +479,14 @@ def test_on_sample_frame(video_path: str,
                          save_dir: str = "output"):
     """
     Run the full pipeline on one frame from the video:
-      grayscale → threshold → contours → predict → visualize
+      grayscale -> threshold -> contours -> predict -> visualize
 
     If clf is None (no trained model), uses the rule-based baseline.
     """
     cap, props = load_video(video_path)
     background = compute_background(cap, n_samples=min(50, props["frame_count"]))
 
-    # Take the 5th frame (index 4) — early enough to be stable, not frame 0
+    # Take the 5th frame (index 4) -- early enough to be stable, not frame 0
     frame = None
     for i, f in enumerate(read_frames(cap, max_frames=10)):
         frame = f
@@ -537,7 +537,7 @@ def main(data_csv: str = None,
          save_dir: str = "output"):
 
     print("=" * 58)
-    print("  FlyCount Module — Stage 1")
+    print("  FlyCount Module -- Stage 1")
     print("=" * 58)
 
     # ── Step 1: check for labeled data ──────────────────────────────────────
@@ -566,14 +566,14 @@ def main(data_csv: str = None,
     else:
         # ── Step 2b: rule-based baseline + Decision Tree demo ────────────
         print("\n[MODE]  RULE-BASED BASELINE active (no labeled data).")
-        print("        Rules: area<80→zero | area≥80 & solidity>0.85→one | else→two")
+        print("        Rules: area<80->zero | area≥80 & solidity>0.85->one | else->two")
         print()
         print("        LIMITATIONS of the rule-based baseline:")
         print("          1. Area thresholds break if camera distance changes.")
         print("          2. Occluded or clipped flies are misclassified.")
         print("          3. Debris in the 80-350 px² range causes false positives.")
         print("          4. Well-aligned merged flies fool the solidity rule.")
-        print("          5. No generalisation — any arena/lighting change breaks it.")
+        print("          5. No generalisation -- any arena/lighting change breaks it.")
         print()
         print("[DEMO]  Also running Decision Tree on SYNTHETIC data for comparison.")
 
@@ -594,7 +594,7 @@ def main(data_csv: str = None,
     print("\n[TEST]  Running on a sample video frame ...")
 
     if video_path is None or not os.path.exists(video_path):
-        print("        No video supplied — generating synthetic demo video ...")
+        print("        No video supplied -- generating synthetic demo video ...")
         video_path = make_synthetic_video()
 
     # Show both modes side by side when no real data exists

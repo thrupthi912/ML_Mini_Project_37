@@ -5,7 +5,7 @@ Body orientation estimation for fruit fly video analysis.
 
 The orientation problem has two stages:
 
-  Stage 1 — Body-axis angle (image moments, always available)
+  Stage 1 -- Body-axis angle (image moments, always available)
   -----------------------------------------------------------
   cv2.moments() on the binary fly mask gives the second-order central
   moments mu20, mu02, mu11.  The principal axis of the ellipse that has
@@ -13,12 +13,12 @@ The orientation problem has two stages:
 
       theta = 0.5 * arctan2(2*mu11, mu20 - mu02)
 
-  This yields an angle in (-pi/2, pi/2) — i.e. it only tells you the
+  This yields an angle in (-pi/2, pi/2) -- i.e. it only tells you the
   *axis*, not the *direction* along that axis.  Both theta and theta+pi
   are equally valid solutions from the moment equation, so the result
   has a 180-degree ambiguity.
 
-  Stage 2 — Ambiguity resolution (HOG + PCA + Logistic Regression)
+  Stage 2 -- Ambiguity resolution (HOG + PCA + Logistic Regression)
   -----------------------------------------------------------------
   To resolve which end is the head and which is the abdomen, we use
   gradient appearance.  HOG features capture the local edge structure
@@ -28,9 +28,9 @@ The orientation problem has two stages:
   needs to be flipped by pi.
 
   Label convention for the CSV:
-    flip = 0  →  moment angle is already correct (head points in the
+    flip = 0  ->  moment angle is already correct (head points in the
                  direction the angle arrow points)
-    flip = 1  →  moment angle needs pi added (head points the other way)
+    flip = 1  ->  moment angle needs pi added (head points the other way)
 
   Data policy
   -----------
@@ -127,7 +127,7 @@ def check_for_labeled_data(csv_path: str) -> bool:
 
     n0 = sum(1 for r in rows if int(r["flip"]) == 0)
     n1 = sum(1 for r in rows if int(r["flip"]) == 1)
-    print(f"[DATA CHECK] FOUND — {len(rows)} rows  "
+    print(f"[DATA CHECK] FOUND -- {len(rows)} rows  "
           f"(no-flip: {n0}, flip: {n1})")
     return True
 
@@ -139,9 +139,9 @@ def _print_data_instructions(csv_path: str):
     print(f"  Expected file: {csv_path}")
     print()
     print("  CSV columns:")
-    print("    patch_path        — path to a 64×64 grayscale PNG of the fly")
-    print("    moment_angle_rad  — body-axis angle from image moments (radians)")
-    print("    flip              — 0 if angle is correct, 1 if pi must be added")
+    print("    patch_path        -- path to a 64×64 grayscale PNG of the fly")
+    print("    moment_angle_rad  -- body-axis angle from image moments (radians)")
+    print("    flip              -- 0 if angle is correct, 1 if pi must be added")
     print()
     print("  How to collect labels:")
     print("    1. Download the CS229 labeled dataset (see README.md).")
@@ -154,7 +154,7 @@ def _print_data_instructions(csv_path: str):
 
 
 # ---------------------------------------------------------------------------
-# STAGE 1 — IMAGE MOMENTS BASELINE
+# STAGE 1 -- IMAGE MOMENTS BASELINE
 # ---------------------------------------------------------------------------
 
 def moments_orientation(patch: np.ndarray) -> float:
@@ -162,7 +162,7 @@ def moments_orientation(patch: np.ndarray) -> float:
     Compute the body-axis angle from second-order image moments.
 
     The fly body is darker than the background.  We invert the patch
-    so the fly pixels are bright before computing moments — this ensures
+    so the fly pixels are bright before computing moments -- this ensures
     mu20 and mu02 describe the fly blob, not the background.
 
     Mathematics
@@ -181,10 +181,10 @@ def moments_orientation(patch: np.ndarray) -> float:
 
     Returns
     -------
-    angle : float — body axis angle in radians, range (-pi/2, pi/2)
+    angle : float -- body axis angle in radians, range (-pi/2, pi/2)
             Returns 0.0 if moments are degenerate (circular blob).
     """
-    # Invert: fly is dark on light background → make fly bright
+    # Invert: fly is dark on light background -> make fly bright
     _, binary = cv2.threshold(patch, 0, 255,
                               cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
@@ -193,7 +193,7 @@ def moments_orientation(patch: np.ndarray) -> float:
     denom = M["mu20"] - M["mu02"]
     numer = 2.0 * M["mu11"]
 
-    # Degenerate case: circular blob — no dominant axis
+    # Degenerate case: circular blob -- no dominant axis
     if abs(denom) < 1e-6 and abs(numer) < 1e-6:
         return 0.0
 
@@ -202,7 +202,7 @@ def moments_orientation(patch: np.ndarray) -> float:
 
 
 # ---------------------------------------------------------------------------
-# STAGE 2 — HOG FEATURE EXTRACTION FOR DISAMBIGUATION
+# STAGE 2 -- HOG FEATURE EXTRACTION FOR DISAMBIGUATION
 # ---------------------------------------------------------------------------
 
 def extract_hog_features(patch: np.ndarray) -> np.ndarray:
@@ -266,7 +266,7 @@ def load_labeled_data(csv_path: str):
 
 
 # ---------------------------------------------------------------------------
-# TRAIN — PCA + Logistic Regression disambiguation
+# TRAIN -- PCA + Logistic Regression disambiguation
 # ---------------------------------------------------------------------------
 
 def train_disambiguation_model(patches: list,
@@ -277,7 +277,7 @@ def train_disambiguation_model(patches: list,
 
     Why PCA?
       HOG produces a high-dimensional vector (~3000+ dims for 64×64).
-      PCA reduces this to the top 30 principal components — captures the
+      PCA reduces this to the top 30 principal components -- captures the
       dominant variance while preventing overfitting on small datasets.
 
     Why Logistic Regression?
@@ -343,12 +343,12 @@ def evaluate_disambiguation(y_test, y_pred, save_dir: str = "output"):
     ConfusionMatrixDisplay(confusion_matrix=cm,
                            display_labels=["no-flip", "flip"]).plot(
         ax=ax, colorbar=False)
-    ax.set_title("Orientation Disambiguation — Confusion Matrix")
+    ax.set_title("Orientation Disambiguation -- Confusion Matrix")
     plt.tight_layout()
     path = os.path.join(save_dir, "confusion_matrix_orientation.png")
     plt.savefig(path, dpi=120)
     plt.close(fig)
-    print(f"  Saved confusion matrix → {path}")
+    print(f"  Saved confusion matrix -> {path}")
     return acc
 
 
@@ -359,7 +359,7 @@ def evaluate_disambiguation(y_test, y_pred, save_dir: str = "output"):
 def save_model(model, path: str = MODEL_PATH):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     joblib.dump(model, path)
-    print(f"  Model saved → {path}")
+    print(f"  Model saved -> {path}")
 
 
 def load_model(path: str = MODEL_PATH):
@@ -389,7 +389,7 @@ def predict_orientation(patch: np.ndarray, model=None) -> float:
 
     Returns
     -------
-    angle : float — estimated body orientation in radians
+    angle : float -- estimated body orientation in radians
                     range (-pi/2, pi/2) without model
                     range (-pi, pi)     with model
     """
@@ -408,7 +408,7 @@ def predict_orientation(patch: np.ndarray, model=None) -> float:
 
 
 # ---------------------------------------------------------------------------
-# VISUALIZATION — body axis drawn on the patch and on the full frame
+# VISUALIZATION -- body axis drawn on the patch and on the full frame
 # ---------------------------------------------------------------------------
 
 def visualize_orientation(patch: np.ndarray,
@@ -419,14 +419,14 @@ def visualize_orientation(patch: np.ndarray,
     Draw the estimated body axis as an arrow on the fly patch.
 
     The arrow points in the direction of the estimated head end.
-    Without a disambiguation model the arrow could be 180° wrong —
+    Without a disambiguation model the arrow could be 180 deg wrong --
     this is clearly indicated in the plot title.
 
     Parameters
     ----------
     patch                : grayscale uint8 fly patch
     angle                : estimated orientation angle (radians)
-    has_disambiguation   : True if the 180° ambiguity has been resolved
+    has_disambiguation   : True if the 180 deg ambiguity has been resolved
     save_path            : file path to save the figure (optional)
     """
     h, w = patch.shape[:2]
@@ -467,12 +467,12 @@ def visualize_orientation(patch: np.ndarray,
     axes[1].imshow(cv2.cvtColor(vis, cv2.COLOR_BGR2RGB))
 
     if has_disambiguation:
-        title = (f"Body axis — angle {np.degrees(angle):.1f}°\n"
-                 f"(180° ambiguity RESOLVED by HOG + Logistic Regression)")
+        title = (f"Body axis -- angle {np.degrees(angle):.1f} deg\n"
+                 f"(180-deg ambiguity RESOLVED by HOG + Logistic Regression)")
         axes[1].set_title(title, fontsize=8, color="darkgreen")
     else:
-        title = (f"Body axis — angle {np.degrees(angle):.1f}°\n"
-                 f"⚠ 180° ambiguity NOT resolved (no labeled data)\n"
+        title = (f"Body axis -- angle {np.degrees(angle):.1f} deg\n"
+                 f"[!] 180-deg ambiguity NOT resolved (no labeled data)\n"
                  f"Arrow may point toward head OR abdomen")
         axes[1].set_title(title, fontsize=8, color="firebrick")
 
@@ -484,7 +484,7 @@ def visualize_orientation(patch: np.ndarray,
     if save_path:
         os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)
         plt.savefig(save_path, dpi=130, bbox_inches="tight")
-        print(f"  Saved orientation visualization → {save_path}")
+        print(f"  Saved orientation visualization -> {save_path}")
 
     plt.close(fig)
 
@@ -502,7 +502,7 @@ def visualize_orientation_on_frame(frame: np.ndarray,
     frame              : grayscale uint8 full video frame
     contours           : list of OpenCV contours (one per fly)
     angles             : list of float (estimated orientation per contour)
-    has_disambiguation : whether the 180° flip has been resolved
+    has_disambiguation : whether the 180 deg flip has been resolved
     save_path          : optional save path
     """
     vis = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
@@ -537,17 +537,17 @@ def visualize_orientation_on_frame(frame: np.ndarray,
 
     axes[1].imshow(cv2.cvtColor(vis, cv2.COLOR_BGR2RGB))
     amb_note = ("resolved" if has_disambiguation
-                else "⚠ 180° ambiguity unresolved")
+                else "[!] 180-deg ambiguity unresolved")
     axes[1].set_title(f"Body-Axis Arrows ({amb_note})", fontsize=9)
     axes[1].axis("off")
 
-    fig.suptitle("Orientation Estimation — Frame Visualization", fontsize=11)
+    fig.suptitle("Orientation Estimation -- Frame Visualization", fontsize=11)
     plt.tight_layout()
 
     if save_path:
         os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)
         plt.savefig(save_path, dpi=130, bbox_inches="tight")
-        print(f"  Saved frame visualization → {save_path}")
+        print(f"  Saved frame visualization -> {save_path}")
 
     plt.close(fig)
 
@@ -587,9 +587,9 @@ def _run_baseline_demo(save_dir: str):
     patch = np.clip(patch.astype(np.int16) + noise, 0, 255).astype(np.uint8)
 
     angle = moments_orientation(patch)
-    print(f"  True body axis : {true_angle_deg:.1f}°")
-    print(f"  Moments result : {np.degrees(angle):.1f}°  "
-          f"(or {np.degrees(angle) + 180:.1f}° — ambiguous)")
+    print(f"  True body axis : {true_angle_deg:.1f} deg")
+    print(f"  Moments result : {np.degrees(angle):.1f} deg  "
+          f"(or {np.degrees(angle) + 180:.1f} deg -- ambiguous)")
 
     vis_path = os.path.join(save_dir, "orientation_baseline_demo.png")
     visualize_orientation(patch, angle,
@@ -598,14 +598,14 @@ def _run_baseline_demo(save_dir: str):
 
     print()
     print("  LIMITATIONS of the moments-only baseline:")
-    print("  1. 180° ambiguity: moments give the axis, not the direction.")
+    print("  1. 180-deg ambiguity: moments give the axis, not the direction.")
     print("     Both theta and theta+pi are indistinguishable from shape alone.")
     print("  2. Pose sensitivity: a fly curled or at the arena edge gives")
-    print("     a distorted ellipse, rotating the apparent axis by 10–30°.")
+    print("     a distorted ellipse, rotating the apparent axis by 10-30 deg.")
     print("  3. Merged blobs: when two flies touch, the combined moment axis")
     print("     points between the two bodies, not along either fly.")
     print("  4. No temporal continuity: each frame is treated independently;")
-    print("     small per-frame noise can cause 180° flips between frames.")
+    print("     small per-frame noise can cause 180-deg flips between frames.")
     print("  5. Resolution to Stage 2 requires labeled patches with flip=0/1.")
 
 
@@ -625,7 +625,7 @@ def main(csv_path: str = DEFAULT_CSV, save_dir: str = "output"):
     has_data = check_for_labeled_data(csv_path)
 
     if not has_data:
-        # Stage 1 only — moments baseline with visualization
+        # Stage 1 only -- moments baseline with visualization
         _run_baseline_demo(save_dir)
         print()
         print("[STATUS] Stage 1 (moments baseline) is operational.")

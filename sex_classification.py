@@ -6,13 +6,13 @@ Male / female identity classification for fruit fly video analysis.
 Algorithm
 ---------
 Features (per contour)
-  1. area          — female Drosophila have a larger abdomen; their body
+  1. area          -- female Drosophila have a larger abdomen; their body
                      contour area is typically 10-25% greater than the male.
-  2. aspect_ratio  — the female body is more rounded (lower AR); the male
+  2. aspect_ratio  -- the female body is more rounded (lower AR); the male
                      is more slender (higher AR due to the narrow abdomen).
-  3. perimeter     — correlated with size but adds independent shape info.
-  4. extent        — area / bounding-box area; females are more compact.
-  5. solidity      — area / convex-hull area; robust to minor pose changes.
+  3. perimeter     -- correlated with size but adds independent shape info.
+  4. extent        -- area / bounding-box area; females are more compact.
+  5. solidity      -- area / convex-hull area; robust to minor pose changes.
 
 All features are standardized with StandardScaler (zero mean, unit variance)
 before being passed to the classifier.  This is required for Logistic
@@ -102,7 +102,7 @@ def extract_features(contour) -> np.ndarray:
 
 
 # ---------------------------------------------------------------------------
-# DATA CHECK  — strict, no fabrication
+# DATA CHECK  -- strict, no fabrication
 # ---------------------------------------------------------------------------
 
 def check_for_labeled_data(csv_path: str) -> bool:
@@ -115,7 +115,7 @@ def check_for_labeled_data(csv_path: str) -> bool:
       - it contains both "male" and "female" labels (need both classes to train)
 
     Prints a detailed status message in all cases.
-    Does NOT raise exceptions — caller decides what to do with the result.
+    Does NOT raise exceptions -- caller decides what to do with the result.
     """
     print("[DATA CHECK] Looking for labeled sex data ...")
     print(f"             Path : {csv_path}")
@@ -159,7 +159,7 @@ def check_for_labeled_data(csv_path: str) -> bool:
 
     male_count   = sum(1 for r in rows if r["label"].strip().lower() == "male")
     female_count = sum(1 for r in rows if r["label"].strip().lower() == "female")
-    print(f"[DATA CHECK] FOUND  —  {len(rows)} labeled rows  "
+    print(f"[DATA CHECK] FOUND  --  {len(rows)} labeled rows  "
           f"(male: {male_count}, female: {female_count})")
     return True
 
@@ -199,7 +199,7 @@ def load_labeled_data(csv_path: str):
     Returns
     -------
     X      : np.ndarray  (N, 5)  float32
-    y      : np.ndarray  (N,)    int  (0=female, 1=male — sklearn alphabetical)
+    y      : np.ndarray  (N,)    int  (0=female, 1=male -- sklearn alphabetical)
     labels : list of str         raw label strings
     """
     import csv
@@ -225,14 +225,14 @@ def load_labeled_data(csv_path: str):
 
 
 # ---------------------------------------------------------------------------
-# TRAIN  — Logistic Regression with StandardScaler
+# TRAIN  -- Logistic Regression with StandardScaler
 # ---------------------------------------------------------------------------
 
 def train_classifier(X: np.ndarray,
                      y: np.ndarray,
                      random_state: int = 42):
     """
-    Build and fit a StandardScaler → LogisticRegression pipeline.
+    Build and fit a StandardScaler -> LogisticRegression pipeline.
 
     Why StandardScaler?
       Logistic Regression optimizes a loss function via gradient descent.
@@ -304,12 +304,12 @@ def evaluate(model, X_test, y_test, y_pred, cv_scores,
     fig, ax = plt.subplots(figsize=(4, 4))
     ConfusionMatrixDisplay(confusion_matrix=cm,
                            display_labels=CLASS_NAMES).plot(ax=ax, colorbar=False)
-    ax.set_title("Sex Classification — Confusion Matrix")
+    ax.set_title("Sex Classification -- Confusion Matrix")
     plt.tight_layout()
     cm_path = os.path.join(save_dir, "confusion_matrix_sex.png")
     plt.savefig(cm_path, dpi=120)
     plt.close(fig)
-    print(f"  Saved confusion matrix  → {cm_path}")
+    print(f"  Saved confusion matrix  -> {cm_path}")
 
     # -- Coefficient bar chart  --------------------------------------------
     # The scaler+LR pipeline: coefficients are in the standardized space.
@@ -321,13 +321,13 @@ def evaluate(model, X_test, y_test, y_pred, cv_scores,
     ax.barh(FEATURE_NAMES, coef, color=colors)
     ax.axvline(0, color="black", linewidth=0.8)
     ax.set_xlabel("Logistic Regression coefficient\n"
-                  "(positive → predicts male,  negative → predicts female)")
-    ax.set_title("Sex Classifier — Feature Importance (standardized)")
+                  "(positive -> predicts male,  negative -> predicts female)")
+    ax.set_title("Sex Classifier -- Feature Importance (standardized)")
     plt.tight_layout()
     coef_path = os.path.join(save_dir, "sex_clf_coefficients.png")
     plt.savefig(coef_path, dpi=120)
     plt.close(fig)
-    print(f"  Saved coefficient plot  → {coef_path}")
+    print(f"  Saved coefficient plot  -> {coef_path}")
 
     return acc
 
@@ -340,7 +340,7 @@ def save_model(model, path: str = MODEL_PATH):
     """Save the fitted Pipeline to disk."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     joblib.dump(model, path)
-    print(f"  Model saved → {path}")
+    print(f"  Model saved -> {path}")
 
 
 def load_model(path: str = MODEL_PATH):
@@ -363,13 +363,13 @@ def predict_sex(model, contour) -> tuple:
 
     Parameters
     ----------
-    model   : fitted Pipeline  (StandardScaler → LogisticRegression)
+    model   : fitted Pipeline  (StandardScaler -> LogisticRegression)
     contour : OpenCV contour array
 
     Returns
     -------
-    label : str    — "male" or "female"
-    prob  : float  — probability of the predicted class  [0.5, 1.0]
+    label : str    -- "male" or "female"
+    prob  : float  -- probability of the predicted class  [0.5, 1.0]
     """
     feat_vec = extract_features(contour).reshape(1, -1)
     label    = model.predict(feat_vec)[0]              # int (0 or 1)
@@ -379,7 +379,7 @@ def predict_sex(model, contour) -> tuple:
 
 
 # ---------------------------------------------------------------------------
-# PAIR CLASSIFICATION  — the clean interface required by the task
+# PAIR CLASSIFICATION  -- the clean interface required by the task
 # ---------------------------------------------------------------------------
 
 def classify_pair(contour_a, contour_b, model=None):
@@ -462,8 +462,8 @@ def visualize_pair_prediction(frame: np.ndarray,
     """
     Draw both contours on the frame, colour-coded by predicted sex.
 
-    Male   → orange  outline + "M" label
-    Female → blue    outline + "F" label
+    Male   -> orange  outline + "M" label
+    Female -> blue    outline + "F" label
 
     Saves a figure with the raw frame alongside the annotated frame.
     """
@@ -519,19 +519,19 @@ def visualize_pair_prediction(frame: np.ndarray,
     ]
     axes[1].legend(handles=legend, loc="lower right", fontsize=8)
 
-    fig.suptitle("Sex Classification — Pair Prediction", fontsize=11)
+    fig.suptitle("Sex Classification -- Pair Prediction", fontsize=11)
     plt.tight_layout()
 
     if save_path:
         os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)
         plt.savefig(save_path, dpi=130, bbox_inches="tight")
-        print(f"  Saved visualization → {save_path}")
+        print(f"  Saved visualization -> {save_path}")
 
     plt.close(fig)
 
 
 # ---------------------------------------------------------------------------
-# DEMO  — show what classify_pair does without a model
+# DEMO  -- show what classify_pair does without a model
 # ---------------------------------------------------------------------------
 
 def _demo_no_model():
