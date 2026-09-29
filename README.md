@@ -10,9 +10,8 @@ A modular Python pipeline for analyzing grayscale videos of fruit flies. The sys
 
 | Member | Modules |
 |--------|---------|
-| Thrupthi (Person 1) | `fly_count.py` — FlyCount classifier, `wing_angle.py` — Wing Angle regression |
-| Person 2 | `sex_classification.py` — Male/female identity |
-| Person 3 | `orientation.py` — Body orientation estimation |
+| Member 1 | `fly_count.py` — FlyCount classifier, `wing_angle.py` — Wing Angle regression |
+| Member 2 | `sex_classification.py` — Male/female identity, `orientation.py` — Body orientation estimation |
 
 ---
 
@@ -23,12 +22,12 @@ ML_Mini_Project_37/
 ├── preprocessing.py      # Video loading, grayscale, thresholding, contour extraction
 ├── fly_count.py          # Decision tree classifier: 0, 1, or 2 flies per contour
 ├── wing_angle.py         # HOG + PCA + Linear Regression for wing angle prediction
-├── sex_classification.py # Male/female identity (Person 2)
-├── orientation.py        # Body orientation estimation (Person 3)
+├── sex_classification.py # Male/female identity classification
+├── orientation.py        # Body orientation estimation
 ├── main.py               # Full pipeline: ties all modules together
 ├── models/               # Saved trained models (.joblib files)
 ├── output/               # Output plots, evaluation results
-├── input/                # ← Place video and labeled data here (see Data Setup)
+├── input/                # Place video and labeled data here (see Data Setup)
 │   ├── video/            # .mp4 video files (test1.mp4 … test5.mp4)
 │   └── images/           # Labeled image patches for training
 ├── requirements.txt
@@ -44,13 +43,11 @@ The labeled training data (~2 GB) is **not included** in this repo. Download it 
 > **Dropbox link:** https://www.dropbox.com/sh/78inyvw2ouut74a/AACc1DYrC1G0UxujwT-6ryRKa?dl=0
 
 1. Download and unzip the archive.
-2. Place the resulting `input/` folder at the root of this project so you have:
+2. Place the resulting `input/` folder at the root of this project:
    - `input/video/test1.mp4` … `test5.mp4`
    - `input/images/` — labeled patches for fly count, sex, orientation, and wing angle
 
-Without this data:
-- `preprocessing.py` and `fly_count.py` will demonstrate with a **synthetic video** automatically generated.
-- `wing_angle.py` will generate **synthetic labeled patches** for a dry-run demonstration.
+Without this data, all modules fall back to **synthetic data** automatically so the code can still be demonstrated end-to-end.
 
 ---
 
@@ -102,7 +99,7 @@ python preprocessing.py --video input/video/test4.mp4
 - Extracts contours using `cv2.findContours`
 - Visualizes: raw frame, thresholded mask, and contours overlaid
 
-### `fly_count.py` *(Thrupthi)*
+### `fly_count.py` — Member 1
 - Computes geometric features from each contour: area, perimeter, aspect ratio, extent, solidity
 - Labels contours as `"zero"`, `"one"`, or `"two"` flies
 - Trains a **Decision Tree classifier** (scikit-learn)
@@ -110,7 +107,7 @@ python preprocessing.py --video input/video/test4.mp4
 - Saves trained model to `models/fly_count_model.joblib`
 - Exports a decision tree diagram to `output/tree_fly_count.png`
 
-### `wing_angle.py` *(Thrupthi)*
+### `wing_angle.py` — Member 1
 - Extracts the male fly's region of interest (ROI) from a frame
 - Crops left and right wing sub-regions
 - Extracts **HOG (Histogram of Oriented Gradients)** features via scikit-image
@@ -119,16 +116,16 @@ python preprocessing.py --video input/video/test4.mp4
 - Evaluates using Mean Absolute Error (MAE) and Root Mean Squared Error (RMSE)
 - Saves model and PCA transform to `models/`
 
-### `sex_classification.py`
-- Classifies each detected fly as male or female based on contour shape features
+### `sex_classification.py` — Member 2
+- Classifies each detected fly as male or female based on contour shape and intensity features
 
-### `orientation.py`
-- Estimates the body orientation angle of each fly using image moments / PCA on the fly patch
+### `orientation.py` — Member 2
+- Estimates the body orientation angle of each fly using image moments
 
 ### `main.py`
 - Orchestrates the full pipeline frame-by-frame
 - Loads video → preprocessing → fly count → sex classification → orientation → wing angle
-- Displays annotated output frames and prints per-frame results
+- Saves annotated output frames and prints per-frame results
 
 ---
 
@@ -142,13 +139,23 @@ python preprocessing.py --video input/video/test4.mp4
 
 ---
 
-## Thrupthi's Individual Contribution
+## Member 1 Work
 
 **Stage 1 — FlyCount Classifier (`fly_count.py`)**
-Implemented contour-based feature extraction (area, perimeter, aspect ratio, extent, solidity) and trained a Decision Tree to classify contour blobs as containing zero, one, or two flies. Handles the common case where two touching flies merge into a single large contour.
+Contour-based feature extraction (area, perimeter, aspect ratio, extent, solidity) and a Decision Tree to classify contour blobs as containing zero, one, or two flies. Handles the case where two touching flies merge into a single large contour.
 
 **Stage 4 — Wing Angle Regression (`wing_angle.py`)**
-Implemented male fly ROI extraction, wing sub-region cropping, HOG feature computation, PCA dimensionality reduction, and Linear Regression training to predict left and right wing angles. Evaluation uses MAE and RMSE on a held-out test split.
+Male fly ROI extraction, wing sub-region cropping, HOG feature computation, PCA dimensionality reduction, and Linear Regression to predict left and right wing angles. Evaluation uses MAE and RMSE on a held-out test split.
+
+---
+
+## Member 2 Work
+
+**Sex Classification (`sex_classification.py`)**
+Classifies each detected fly contour as male or female using contour area, aspect ratio, and intensity statistics.
+
+**Orientation Estimation (`orientation.py`)**
+Estimates fly body orientation angle using image moments on the binary fly patch.
 
 ---
 

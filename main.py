@@ -58,8 +58,8 @@ def train_all_models():
     import wing_angle
     wing_angle.main()
 
-    print("\n[TRAIN] (Sex classification — placeholder for Person 2)")
-    print("[TRAIN] (Orientation — geometry baseline, no training needed)")
+    print("\n[TRAIN] (Sex classification — Member 2 module)")
+    print("[TRAIN] (Orientation — geometry baseline)")
 
 
 def load_models():
@@ -91,7 +91,7 @@ def load_models():
     if sex_clf:
         print("  [OK] Loaded Sex classifier   ← models/sex_clf_model.joblib")
     else:
-        print("  [MISS] Sex classifier not found (Person 2 placeholder)")
+        print("  [MISS] Sex classifier not found (Member 2 module)")
 
     return fly_count_clf, fly_count_le, wing_model_right, wing_model_left, sex_clf
 

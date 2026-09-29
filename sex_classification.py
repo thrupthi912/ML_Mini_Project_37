@@ -1,13 +1,10 @@
 """
-sex_classification.py  — Person 2
-----------------------------------
+sex_classification.py  — Member 2
+-----------------------------------
 Classifies each detected fly as 'male' or 'female' based on contour
 shape and intensity features.
 
-This is a placeholder skeleton for Person 2 to implement.
-The interface is kept consistent with the rest of the pipeline.
-
-TODO (Person 2):
+Member 2 tasks:
     - Load labeled sex data from input/images/sex_labels.csv
     - Choose and train a classifier (e.g. SVM, Random Forest)
     - Evaluate and save model to models/sex_clf_model.joblib
@@ -27,10 +24,10 @@ def sex_features(contour, patch) -> np.ndarray:
     Extract features for sex classification from a contour and its image patch.
 
     Suggested features:
-    - Contour area (females are typically larger)
-    - Aspect ratio (body shape differs between sexes)
-    - Mean pixel intensity of the patch
-    - Standard deviation of pixel intensity
+      - Contour area (females are typically larger)
+      - Aspect ratio (body shape differs between sexes)
+      - Mean pixel intensity of the patch
+      - Standard deviation of pixel intensity
 
     Parameters
     ----------
@@ -47,7 +44,6 @@ def sex_features(contour, patch) -> np.ndarray:
     x, y, w, h = cv2.boundingRect(contour)
     aspect_ratio = float(w) / h if h > 0 else 1.0
 
-    # Placeholder intensity features
     mean_intensity = float(np.mean(patch)) if patch is not None else 128.0
     std_intensity  = float(np.std(patch))  if patch is not None else 0.0
 
@@ -78,10 +74,6 @@ def load_model(path: str = "models/sex_clf_model.joblib"):
     return joblib.load(path)
 
 
-# ---------------------------------------------------------------------------
-# Placeholder main (Person 2 to implement fully)
-# ---------------------------------------------------------------------------
-
 if __name__ == "__main__":
-    print("sex_classification.py — skeleton placeholder for Person 2.")
-    print("Implement training loop here using input/images/sex_labels.csv")
+    print("sex_classification.py — Member 2 module.")
+    print("Train using labeled data from input/images/sex_labels.csv")

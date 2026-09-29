@@ -1,6 +1,6 @@
 """
-wing_angle.py  — Thrupthi (Person 1, Stage 4)
-----------------------------------------------
+wing_angle.py  — Member 1, Stage 4
+-------------------------------------
 Linear Regression model that predicts male fly wing angles (radians)
 from HOG (Histogram of Oriented Gradients) features + PCA.
 
@@ -430,7 +430,7 @@ def predict_wing_angles(model_right, model_left,
 
 def main(data_csv: str = None, save_dir: str = "output"):
     print("=" * 55)
-    print("  Wing Angle Regression (HOG + PCA + LR) — Thrupthi")
+    print("  Wing Angle Regression (HOG + PCA + LR)")
     print("=" * 55)
 
     # ---- Data loading -------------------------------------------------------

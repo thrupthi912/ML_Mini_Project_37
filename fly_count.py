@@ -1,6 +1,6 @@
 """
-fly_count.py  — Thrupthi (Person 1, Stage 1)
----------------------------------------------
+fly_count.py  — Member 1, Stage 1
+-----------------------------------
 Decision Tree classifier that labels each contour blob as containing:
   "zero"  — background noise / not a fly
   "one"   — a single fly
@@ -376,7 +376,7 @@ def predict_fly_count(clf, le, contour) -> str:
 
 def main(data_csv: str = None, save_dir: str = "output"):
     print("=" * 55)
-    print("  FlyCount Decision Tree Classifier — Thrupthi")
+    print("  FlyCount Decision Tree Classifier")
     print("=" * 55)
 
     # ---- Data loading -------------------------------------------------------
