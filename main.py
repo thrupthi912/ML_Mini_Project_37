@@ -41,7 +41,7 @@ from wing_angle import (load_wing_models, predict_wing_angles,
 from sex_classification import (load_model as load_sex_model,
                                  predict_sex, classify_pair)
 
-from orientation import predict_orientation
+from orientation import predict_orientation, load_model as load_orientation_model
 
 
 # ---------------------------------------------------------------------------
@@ -85,7 +85,7 @@ def load_models():
         print(f"  [OK] Loaded WingAngle models ← models/")
     else:
         print(f"  [MISS] WingAngle models not found in models/")
-        print("         Run: python wing_angle.py  (or use --train flag)")
+        print("         Run: python wing_angle.py --data input/images/wing_labels.csv")
 
     sex_clf = load_sex_model()
     if sex_clf:
@@ -93,7 +93,13 @@ def load_models():
     else:
         print("  [MISS] Sex classifier not found (Member 2 module)")
 
-    return fly_count_clf, fly_count_le, wing_model_right, wing_model_left, sex_clf
+    orient_model = load_orientation_model()
+    if orient_model:
+        print("  [OK] Loaded Orientation model ← models/orientation_model.joblib")
+    else:
+        print("  [MISS] Orientation model not found — using moments baseline")
+
+    return fly_count_clf, fly_count_le, wing_model_right, wing_model_left, sex_clf, orient_model
 
 
 def annotate_frame(frame_bgr: np.ndarray,
@@ -165,7 +171,7 @@ def process_frame(frame: np.ndarray,
                   background: np.ndarray,
                   fly_count_clf, fly_count_le,
                   wing_model_right, wing_model_left,
-                  sex_clf) -> dict:
+                  sex_clf, orient_model=None) -> dict:
     """
     Run the full analysis pipeline on one grayscale frame.
 
@@ -210,7 +216,7 @@ def process_frame(frame: np.ndarray,
 
         # --- Orientation ----------------------------------------------------
         if patch is not None:
-            angle = predict_orientation(patch)
+            angle = predict_orientation(patch, model=orient_model)
             orientations.append(angle)
         else:
             orientations.append(None)
@@ -226,9 +232,11 @@ def process_frame(frame: np.ndarray,
         if label == "one" and patch is not None:
             if wing_model_right is not None and wing_model_left is not None:
                 try:
-                    wr, wl = predict_wing_angles(wing_model_right,
+                    result = predict_wing_angles(wing_model_right,
                                                  wing_model_left, patch)
-                    wing_info[i] = {"right": wr, "left": wl}
+                    if result is not None:
+                        wr, wl = result
+                        wing_info[i] = {"right": wr, "left": wl}
                 except Exception:
                     pass   # patch too small or other issue — skip silently
 
@@ -290,7 +298,7 @@ def main(video_path: str = None,
     print("\n[LOAD] Loading trained models ...")
     (fly_count_clf, fly_count_le,
      wing_model_right, wing_model_left,
-     sex_clf) = load_models()
+     sex_clf, orient_model) = load_models()
 
     # ---- Auto-train if models are missing -----------------------------------
     if fly_count_clf is None or wing_model_right is None:
@@ -298,7 +306,7 @@ def main(video_path: str = None,
         train_all_models()
         (fly_count_clf, fly_count_le,
          wing_model_right, wing_model_left,
-         sex_clf) = load_models()
+         sex_clf, orient_model) = load_models()
 
     # ---- Video source -------------------------------------------------------
     if video_path is None or not os.path.exists(video_path):
@@ -325,7 +333,7 @@ def main(video_path: str = None,
             frame, background,
             fly_count_clf, fly_count_le,
             wing_model_right, wing_model_left,
-            sex_clf
+            sex_clf, orient_model
         )
 
         # Build annotated colour image for saving
