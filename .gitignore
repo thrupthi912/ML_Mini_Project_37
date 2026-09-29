@@ -15,6 +15,7 @@ env/
 input/
 *.mp4
 *.avi
+synthetic_test.mp4
 
 # Generated outputs (can be reproduced)
 output/

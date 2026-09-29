@@ -1,8 +1,10 @@
 # Real-time Detailed Video Analysis of Fruit Flies
 
-**ML Mini Project — Group 37**
+**ML Mini Project — Group 37 | UE24CS352A Machine Learning**
 
-A modular Python pipeline for analyzing grayscale videos of fruit flies. The system estimates fly count, male/female identity, body orientation, and male wing angles using classical computer vision and machine learning.
+A modular Python pipeline that analyses grayscale video of two fruit flies
+and estimates fly count, body orientation, sex, and male wing angles using
+classical computer vision and machine learning.
 
 ---
 
@@ -10,8 +12,21 @@ A modular Python pipeline for analyzing grayscale videos of fruit flies. The sys
 
 | Member | Modules |
 |--------|---------|
-| Member 1 | `fly_count.py` — FlyCount classifier, `wing_angle.py` — Wing Angle regression |
-| Member 2 | `sex_classification.py` — Male/female identity, `orientation.py` — Body orientation estimation |
+| Member 1 | `fly_count.py` — FlyCount Decision Tree classifier |
+|           | `wing_angle.py` — HOG + PCA + Linear Regression wing-angle regression |
+| Member 2 | `sex_classification.py` — Logistic Regression sex classifier |
+|           | `orientation.py` — Image-moments baseline + HOG disambiguation |
+
+---
+
+## What Each Module Does
+
+| Module | Algorithm | Status without labeled data |
+|--------|-----------|----------------------------|
+| `fly_count.py` | Decision Tree on 5 contour geometry features | Rule-based fallback (area + solidity thresholds) |
+| `orientation.py` | Stage 1: image moments. Stage 2: HOG + PCA + Logistic Regression | Stage 1 always runs; Stage 2 needs `orientation_labels.csv` |
+| `sex_classification.py` | StandardScaler + Logistic Regression | Disabled — no fabrication |
+| `wing_angle.py` | HOG + PCA + Linear Regression | Preprocessing visualization runs; regression disabled |
 
 ---
 
@@ -19,148 +34,220 @@ A modular Python pipeline for analyzing grayscale videos of fruit flies. The sys
 
 ```
 ML_Mini_Project_37/
-├── preprocessing.py      # Video loading, grayscale, thresholding, contour extraction
-├── fly_count.py          # Decision tree classifier: 0, 1, or 2 flies per contour
-├── wing_angle.py         # HOG + PCA + Linear Regression for wing angle prediction
-├── sex_classification.py # Male/female identity classification
-├── orientation.py        # Body orientation estimation
-├── main.py               # Full pipeline: ties all modules together
-├── models/               # Saved trained models (.joblib files)
-├── output/               # Output plots, evaluation results
-├── input/                # Place video and labeled data here (see Data Setup)
-│   ├── video/            # .mp4 video files (test1.mp4 … test5.mp4)
-│   └── images/           # Labeled image patches for training
+├── main.py               # Full integrated pipeline (run this)
+├── preprocessing.py      # Video I/O, grayscale, Otsu threshold, contours
+├── fly_count.py          # FlyCount: Decision Tree classifier
+├── orientation.py        # Orientation: moments baseline + HOG disambiguation
+├── sex_classification.py # Sex: Logistic Regression (needs labeled data)
+├── wing_angle.py         # Wing angle: HOG + PCA + Linear Regression
+├── models/               # Saved .joblib model files (auto-created)
+├── output/               # Annotated frames + evaluation plots (auto-created)
+├── input/                # Place downloaded data here (see Data Setup)
+│   ├── video/            # test1.mp4 … test5.mp4
+│   └── images/           # Labeled patches and CSV files
 ├── requirements.txt
 └── README.md
 ```
 
 ---
 
-## Data Setup (Required Before Training)
-
-The labeled training data (~2 GB) is **not included** in this repo. Download it from the original CS229 project:
-
-> **Dropbox link:** https://www.dropbox.com/sh/78inyvw2ouut74a/AACc1DYrC1G0UxujwT-6ryRKa?dl=0
-
-1. Download and unzip the archive.
-2. Place the resulting `input/` folder at the root of this project:
-   - `input/video/test1.mp4` … `test5.mp4`
-   - `input/images/` — labeled patches for fly count, sex, orientation, and wing angle
-
-Without this data, all modules fall back to **synthetic data** automatically so the code can still be demonstrated end-to-end.
-
----
-
 ## Installation
 
+### 1. Python version
+Python **3.8 or higher** is required. Check yours:
+```bash
+python --version
+```
+
+### 2. Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-Python 3.8+ recommended.
+All packages with pinned versions:
+```
+numpy==1.24.4
+opencv-python==4.8.1.78
+scikit-learn==1.3.2
+matplotlib==3.7.5
+scikit-image==0.21.0
+joblib==1.3.2
+tqdm==4.66.1
+imutils==0.5.4
+```
+
+> If you have a newer environment and want flexible versions, you can also run:
+> `pip install numpy opencv-python scikit-learn matplotlib scikit-image joblib imutils`
 
 ---
 
-## Usage
+## Data Setup (Required for full supervised training)
 
-### Run the full pipeline (demo mode — works without data)
+The labeled training data (~2 GB) is **not included** in this repo.
+Download it from the original CS229 project:
+
+> **Dropbox:** https://www.dropbox.com/sh/78inyvw2ouut74a/AACc1DYrC1G0UxujwT-6ryRKa?dl=0
+
+1. Download and unzip.
+2. Place the `input/` folder at the root of this project:
+   ```
+   ML_Mini_Project_37/input/video/test1.mp4
+   ML_Mini_Project_37/input/video/test4.mp4   ← default demo video
+   ML_Mini_Project_37/input/images/           ← labeled patches
+   ```
+
+**Without this data the project still runs** — FlyCount uses a rule-based
+fallback, orientation uses the moments baseline, and sex/wing-angle modules
+print a clear "unavailable" message instead of fabricating predictions.
+
+---
+
+## Running the Project
+
+### Quickstart — synthetic demo (no data needed)
 ```bash
 python main.py
 ```
+Generates a synthetic video of two moving ellipses, processes 10 frames,
+prints per-frame results, and saves annotated PNGs to `output/`.
 
-### Run with a real video
+### Process a real video
 ```bash
 python main.py --video input/video/test4.mp4
 ```
 
-### Train and evaluate fly count classifier only
+### Process more frames
 ```bash
+python main.py --video input/video/test4.mp4 --frames 30
+```
+
+### Live OpenCV preview window (needs a desktop / display server)
+```bash
+python main.py --video input/video/test4.mp4 --display
+```
+Press **q** in the window to quit early.
+
+### Save outputs to a custom directory
+```bash
+python main.py --video input/video/test4.mp4 --save_dir results/
+```
+
+### Retrain the FlyCount model then run
+```bash
+python main.py --train
+```
+
+---
+
+## Running Individual Modules
+
+### FlyCount classifier (Member 1 — Stage 1)
+```bash
+# No data: runs rule-based baseline + Decision Tree demo on synthetic data
 python fly_count.py
-```
 
-### Train and evaluate wing angle regressor only
+# With real labeled data:
+python fly_count.py --data input/images/fly_count_labels.csv
+```
+Expected CSV columns: `area, perimeter, aspect_ratio, extent, solidity, label`
+Labels: `zero` | `one` | `two`
+
+### Wing-angle regression (Member 1 — Stage 4)
 ```bash
+# No data: runs preprocessing + visualization only (no regression)
 python wing_angle.py
-```
 
-### Run preprocessing and visualize contours
+# With real labeled data:
+python wing_angle.py --data input/images/wing_labels.csv
+```
+Expected CSV columns: `patch_path, angle_right_rad, angle_left_rad`
+
+### Orientation estimation (Member 2)
 ```bash
-python preprocessing.py --video input/video/test4.mp4
+# No data: moments baseline runs + limitations explained
+python orientation.py
+
+# With real labeled data (for 180° disambiguation):
+python orientation.py --data input/images/orientation_labels.csv
+```
+Expected CSV columns: `patch_path, moment_angle_rad, flip`
+`flip` is `0` (angle correct) or `1` (add pi to fix direction).
+
+### Sex classification (Member 2)
+```bash
+# No data: strict check, no fabrication, classify_pair() demo shown
+python sex_classification.py
+
+# With real labeled data:
+python sex_classification.py --data input/images/sex_labels.csv
+```
+Expected CSV columns: `area, perimeter, aspect_ratio, extent, solidity, label`
+Labels: `male` | `female`
+
+### Preprocessing standalone
+```bash
+python preprocessing.py                        # synthetic video
+python preprocessing.py --video input/video/test4.mp4 --frames 5
 ```
 
 ---
 
-## Module Descriptions
+## What the Pipeline Outputs
 
-### `preprocessing.py`
-- Loads video frames using OpenCV
-- Converts to grayscale
-- Applies Otsu's thresholding to isolate flies from background
-- Extracts contours using `cv2.findContours`
-- Visualizes: raw frame, thresholded mask, and contours overlaid
+After running `main.py`:
 
-### `fly_count.py` — Member 1
-- Computes geometric features from each contour: area, perimeter, aspect ratio, extent, solidity
-- Labels contours as `"zero"`, `"one"`, or `"two"` flies
-- Trains a **Decision Tree classifier** (scikit-learn)
-- Evaluates with accuracy, classification report, and confusion matrix
-- Saves trained model to `models/fly_count_model.joblib`
-- Exports a decision tree diagram to `output/tree_fly_count.png`
+| File | Description |
+|------|-------------|
+| `output/frame_0000.png` … | Annotated frames with contours, count, orientation arrow, sex label, wing-angle arrows |
+| `output/pipeline_summary.png` | Grid of all processed frames in one figure |
+| `output/confusion_matrix_fly_count.png` | FlyCount evaluation (when trained) |
+| `output/tree_fly_count.png` | Decision tree diagram |
+| `output/wing_angle_right_scatter.png` | True vs predicted scatter (when trained) |
+| `output/orientation_baseline_demo.png` | Moments baseline visualization |
+| `output/wing_angle_preprocessing_demo.png` | HOG pipeline visualization |
 
-### `wing_angle.py` — Member 1
-- Extracts the male fly's region of interest (ROI) from a frame
-- Crops left and right wing sub-regions
-- Extracts **HOG (Histogram of Oriented Gradients)** features via scikit-image
-- Applies **PCA** to reduce HOG feature dimensionality
-- Trains a **Linear Regression** model to predict left/right wing angles (radians)
-- Evaluates using Mean Absolute Error (MAE) and Root Mean Squared Error (RMSE)
-- Saves model and PCA transform to `models/`
-
-### `sex_classification.py` — Member 2
-- Classifies each detected fly as male or female based on contour shape and intensity features
-
-### `orientation.py` — Member 2
-- Estimates the body orientation angle of each fly using image moments
-
-### `main.py`
-- Orchestrates the full pipeline frame-by-frame
-- Loads video → preprocessing → fly count → sex classification → orientation → wing angle
-- Saves annotated output frames and prints per-frame results
+Console output includes per-frame:
+- Fly count, contour labels
+- Orientation angle (degrees)
+- Sex label (or `N/A` with reason)
+- Wing angles right/left (or `N/A` with reason)
+- Per-frame FPS and mean FPS at the end
 
 ---
 
-## Algorithms Used
+## HUD Legend (annotated frames)
 
-| Task | Algorithm | Why |
-|------|-----------|-----|
-| Fly count | Decision Tree | Interpretable; works well with small geometric feature sets |
-| Wing angle | Linear Regression + HOG + PCA | HOG captures local gradient structure in wing regions; PCA prevents overfitting |
-| Thresholding | Otsu's method | Automatically finds optimal threshold for bimodal grayscale histograms |
-
----
-
-## Member 1 Work
-
-**Stage 1 — FlyCount Classifier (`fly_count.py`)**
-Contour-based feature extraction (area, perimeter, aspect ratio, extent, solidity) and a Decision Tree to classify contour blobs as containing zero, one, or two flies. Handles the case where two touching flies merge into a single large contour.
-
-**Stage 4 — Wing Angle Regression (`wing_angle.py`)**
-Male fly ROI extraction, wing sub-region cropping, HOG feature computation, PCA dimensionality reduction, and Linear Regression to predict left and right wing angles. Evaluation uses MAE and RMSE on a held-out test split.
+| Color | Meaning |
+|-------|---------|
+| Green outline | Single fly contour |
+| Orange outline | Two merged flies |
+| Grey outline | Noise (zero flies) |
+| Cyan arrow | Body orientation axis |
+| Orange arrow | Right wing angle |
+| Blue arrow | Left wing angle |
+| `M` / `F` label | Sex prediction (only when model available) |
+| `sex:N/A` | Sex module unavailable — no trained model |
+| `wing:N/A` | Wing module unavailable — no trained model |
 
 ---
 
-## Member 2 Work
+## Honest Module Status
 
-**Sex Classification (`sex_classification.py`)**
-Classifies each detected fly contour as male or female using contour area, aspect ratio, and intensity statistics.
+| Module | Supervised model trains? | What runs without data |
+|--------|--------------------------|------------------------|
+| FlyCount | Yes — on `fly_count_labels.csv` | Rule-based area+solidity fallback |
+| Orientation Stage 1 | N/A (geometry, no training) | Fully functional — moments always run |
+| Orientation Stage 2 | Yes — on `orientation_labels.csv` | Skipped; 180° ambiguity note shown |
+| Sex classifier | Yes — on `sex_labels.csv` | Disabled, `N/A` shown on frame |
+| Wing-angle regression | Yes — on `wing_labels.csv` | Preprocessing + HOG vis only |
 
-**Orientation Estimation (`orientation.py`)**
-Estimates fly body orientation angle using image moments on the binary fly patch.
+No module fabricates predictions or reports accuracy numbers on synthetic data
+as if they were real results.
 
 ---
 
 ## References
 
 - Original CS229 project: https://github.com/sgherbst/cs229-project
-- Dalal & Triggs (2005) — HOG features for human detection
-- scikit-learn Decision Tree documentation: https://scikit-learn.org/stable/modules/tree.html
+- Dalal & Triggs (2005) — Histograms of Oriented Gradients for Human Detection
+- scikit-learn documentation: https://scikit-learn.org/stable/

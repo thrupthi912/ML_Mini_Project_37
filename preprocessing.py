@@ -115,17 +115,22 @@ def threshold_frame(frame: np.ndarray,
     mask : binary uint8 array (0 or 255)
     """
     if background is not None:
-        # Absolute difference: brighter where flies are present
+        # Absolute difference: bright where flies are present (flies moved)
         diff = cv2.absdiff(frame, background)
+        # Gaussian blur
+        blurred = cv2.GaussianBlur(diff, (blur_ksize, blur_ksize), 0)
+        # Otsu on the difference image — bright pixels are foreground
+        _, mask = cv2.threshold(blurred, 0, 255,
+                                cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     else:
+        # No background model available.
+        # Flies are dark objects on a light background, so we invert before
+        # thresholding so that fly pixels become bright (foreground = high value).
         diff = frame.copy()
-
-    # Gaussian blur
-    blurred = cv2.GaussianBlur(diff, (blur_ksize, blur_ksize), 0)
-
-    # Otsu's threshold — automatically picks the best threshold value
-    _, mask = cv2.threshold(blurred, 0, 255,
-                            cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        blurred = cv2.GaussianBlur(diff, (blur_ksize, blur_ksize), 0)
+        # THRESH_BINARY_INV: dark fly pixels → 255, light background → 0
+        _, mask = cv2.threshold(blurred, 0, 255,
+                                cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
     # Morphological closing: closes small dark gaps inside fly blobs
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
