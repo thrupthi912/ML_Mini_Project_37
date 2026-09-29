@@ -7,6 +7,7 @@ Frame-by-frame pipeline
 -----------------------
   1. Grayscale preprocessing + background subtraction   [preprocessing.py]
   2. Otsu threshold + contour extraction                [preprocessing.py]
+       (arena-aware: everything outside the detected circular arena is ignored)
   3. FlyCount  -- Decision Tree (zero / one / two flies) [fly_count.py]
   4. Orientation -- image moments baseline               [orientation.py]
        (Stage 2 HOG disambiguation when labeled model present)
@@ -57,6 +58,7 @@ import matplotlib.pyplot as plt
 from preprocessing import (
     make_synthetic_video, load_video, compute_background,
     read_frames, threshold_frame, extract_contours, contour_features,
+    detect_arena,
 )
 from fly_count import (
     load_model as load_fly_count_model,
@@ -169,12 +171,20 @@ def _module_summary(models: dict) -> str:
 
 def process_frame(frame: np.ndarray,
                   background: np.ndarray,
-                  models: dict) -> dict:
+                  models: dict,
+                  arena=None) -> dict:
     """
     Run the full analysis pipeline on one grayscale frame.
 
     Errors inside individual module calls are caught and reported per
     contour so one bad contour never aborts the whole frame.
+
+    Parameters
+    ----------
+    frame      : grayscale uint8 frame
+    background : illumination map from compute_background() (or None)
+    models     : status dict from load_all_models()
+    arena      : (cx, cy, r) from detect_arena(), or None to use the full frame
 
     Returns
     -------
@@ -188,7 +198,7 @@ def process_frame(frame: np.ndarray,
         total_flies : int
         errors      : list of str  (non-fatal errors encountered)
     """
-    mask     = threshold_frame(frame, background)
+    mask     = threshold_frame(frame, background, arena=arena)
     contours = extract_contours(mask)
 
     labels, counts, orientations, sexes = [], [], [], []
@@ -542,11 +552,18 @@ def main(video_path: str = None,
           f"{props['frame_count']} total frames  |  "
           f"processing {max_frames}")
 
-    # ── Background model ─────────────────────────────────────────────────────
+    # ── Background model + arena detection ───────────────────────────────────
     print("\n[BG]    Computing background model ...")
-    n_bg = min(50, props["frame_count"])
+    n_bg  = min(50, props["frame_count"])
+    arena = None                       # stays None if the background fails
     try:
         background = compute_background(cap, n_samples=n_bg)
+        arena = detect_arena(background)
+        if arena is None:
+            print("  [INFO] Arena not detected -- using full frame.")
+        else:
+            print(f"  [OK]   Arena: centre=({arena[0]:.0f}, {arena[1]:.0f}), "
+                  f"r={arena[2]:.0f}px")
     except Exception as e:
         print(f"  [WARN] Background computation failed ({e}). Using None.")
         background = None
@@ -577,7 +594,7 @@ def main(video_path: str = None,
 
         # ── Analyse ─────────────────────────────────────────────────────────
         try:
-            result = process_frame(frame, background, models)
+            result = process_frame(frame, background, models, arena=arena)
         except Exception as e:
             print(f"  [ERROR] Frame {frame_idx:04d} failed: {e}")
             traceback.print_exc()
