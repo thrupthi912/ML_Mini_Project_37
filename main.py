@@ -39,7 +39,7 @@ from wing_angle import (load_wing_models, predict_wing_angles,
                         extract_fly_patch, PATCH_H, PATCH_W)
 
 from sex_classification import (load_model as load_sex_model,
-                                 predict_sex)
+                                 predict_sex, classify_pair)
 
 from orientation import predict_orientation
 
@@ -217,7 +217,7 @@ def process_frame(frame: np.ndarray,
 
         # --- Sex (placeholder) ----------------------------------------------
         if sex_clf is not None and patch is not None:
-            sex = predict_sex(sex_clf, contour, patch)
+            sex, _ = predict_sex(sex_clf, contour)
         else:
             sex = "unknown"
         sexes.append(sex)
