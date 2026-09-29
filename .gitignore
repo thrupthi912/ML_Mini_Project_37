@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.env
+venv/
+env/
+
+# Data (too large for git)
+input/
+*.mp4
+*.avi
+
+# Generated outputs (can be reproduced)
+output/
+synthetic_test.mp4
+
+# Models (can be re-trained)
+models/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
