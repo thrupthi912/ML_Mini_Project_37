@@ -11,18 +11,15 @@ build/
 venv/
 env/
 
-# Data (too large for git)
-input/
-*.mp4
-*.avi
-synthetic_test.mp4
+# Data generated locally
+input/images/*.csv
+input/images/patches/
+input/video/
 
-# Generated outputs (can be reproduced)
+# Generated outputs
 output/
-synthetic_test.mp4
-
-# Models (can be re-trained)
 models/
+synthetic_test.mp4
 
 # Jupyter
 .ipynb_checkpoints/
