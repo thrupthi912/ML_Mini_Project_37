@@ -71,6 +71,7 @@ from orientation import (
 from sex_classification import (
     load_model as load_sex_model,
     predict_sex,
+    classify_pair,
 )
 from wing_angle import (
     load_wing_models, predict_wing_angles, extract_fly_patch,
@@ -202,6 +203,7 @@ def process_frame(frame: np.ndarray,
     contours = extract_contours(mask)
 
     labels, counts, orientations, sexes = [], [], [], []
+    patches   = []
     wing_info = {}
     errors    = []
 
@@ -235,6 +237,7 @@ def process_frame(frame: np.ndarray,
             cx, cy = x + w // 2, y + h // 2
 
         patch = extract_fly_patch(frame, cx, cy)
+        patches.append(patch)
 
         # ── Orientation ─────────────────────────────────────────────────────
         if patch is not None:
@@ -248,7 +251,7 @@ def process_frame(frame: np.ndarray,
         else:
             orientations.append(None)
 
-        # ── Sex classification ───────────────────────────────────────────────
+        # ── Initial per-contour sex classification ──────────────────────────
         if sex["ok"] and patch is not None:
             try:
                 sex_label, _ = predict_sex(sex["model"], contour)
@@ -259,14 +262,38 @@ def process_frame(frame: np.ndarray,
         else:
             sexes.append(None)   # None = module unavailable (not "unknown")
 
-        # ── Wing angles ──────────────────────────────────────────────────────
-        if label == "one" and patch is not None and wing["ok"]:
-            try:
-                result = predict_wing_angles(wing["right"], wing["left"], patch)
-                if result is not None:
-                    wing_info[i] = {"right": result[0], "left": result[1]}
-            except Exception as e:
-                errors.append(f"Wing contour {i}: {e}")
+    # ── Joint pairwise sex refinement ────────────────────────────────────────
+    # In standard two-fly courtship experiments, exactly two single-fly contours exist.
+    # Jointly classifying the pair ensures one male and one female (matching CS229 Section 4.2).
+    one_indices = [idx for idx, lbl in enumerate(labels) if lbl == "one"]
+    if len(one_indices) == 2 and sex["ok"]:
+        try:
+            pair_res = classify_pair(contours[one_indices[0]],
+                                     contours[one_indices[1]],
+                                     model=sex["model"])
+            if pair_res is not None:
+                if pair_res["ordering"] == "AB":
+                    sexes[one_indices[0]] = "male"
+                    sexes[one_indices[1]] = "female"
+                else:
+                    sexes[one_indices[0]] = "female"
+                    sexes[one_indices[1]] = "male"
+        except Exception as e:
+            errors.append(f"Pair sex classification: {e}")
+
+    # ── Wing angles (Male flies only) ────────────────────────────────────────
+    # In courtship behavior, only the male fly displays courtship wing songs/extension.
+    # Therefore, wing angle estimation is strictly performed for the male fly.
+    for i in range(len(contours)):
+        if labels[i] == "one" and patches[i] is not None and wing["ok"]:
+            is_male = (sexes[i] == "male") or (not sex["ok"])
+            if is_male:
+                try:
+                    result = predict_wing_angles(wing["right"], wing["left"], patches[i])
+                    if result is not None:
+                        wing_info[i] = {"right": result[0], "left": result[1]}
+                except Exception as e:
+                    errors.append(f"Wing contour {i}: {e}")
 
     total = sum(counts)
     return {
@@ -474,10 +501,41 @@ def _print_frame_result(frame_idx: int, result: dict, fps: float):
 # TRAIN HELPERS
 # ═══════════════════════════════════════════════════════════════════════════
 
-def train_fly_count():
-    """Train (or retrain) the FlyCount Decision Tree on synthetic data."""
+def train_all_models(input_dir: str = "input/images", save_dir: str = "output"):
+    """
+    Train all 4 pipeline stages using real labeled data if available,
+    falling back to synthetic data as appropriate.
+    """
     import fly_count
-    fly_count.main(data_csv=None, save_dir="output")
+    import sex_classification
+    import orientation
+    import wing_angle
+
+    fc_csv = os.path.join(input_dir, "fly_count_labels.csv")
+    sex_csv = os.path.join(input_dir, "sex_labels.csv")
+    ori_csv = os.path.join(input_dir, "orientation_labels.csv")
+    wing_csv = os.path.join(input_dir, "wing_labels.csv")
+
+    print("\n[TRAIN 1/4] Training FlyCount Decision Tree...")
+    fly_count.main(data_csv=fc_csv if os.path.isfile(fc_csv) else None, save_dir=save_dir)
+
+    print("\n[TRAIN 2/4] Training Sex Classifier...")
+    if os.path.isfile(sex_csv):
+        sex_classification.main(data_csv=sex_csv, save_dir=save_dir)
+    else:
+        print(f"  [MISS] {sex_csv} not found, skipping sex classifier training.")
+
+    print("\n[TRAIN 3/4] Training Orientation Disambiguation...")
+    if os.path.isfile(ori_csv):
+        orientation.main(data_csv=ori_csv, save_dir=save_dir)
+    else:
+        print(f"  [MISS] {ori_csv} not found, skipping orientation training.")
+
+    print("\n[TRAIN 4/4] Training Wing Angle Regression...")
+    if os.path.isfile(wing_csv):
+        wing_angle.main(data_csv=wing_csv, save_dir=save_dir)
+    else:
+        print(f"  [MISS] {wing_csv} not found, skipping wing angle training.")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -495,7 +553,7 @@ def main(video_path: str = None,
     Parameters
     ----------
     video_path  : path to an .mp4 file.  None -> synthetic demo video.
-    do_train    : if True, retrain FlyCount before running.
+    do_train    : if True, retrain models before running.
     max_frames  : number of frames to process.
     save_dir    : directory for all output files.
     display     : if True, show a live OpenCV window (needs a desktop).
@@ -508,9 +566,9 @@ def main(video_path: str = None,
 
     # ── Optional retrain ────────────────────────────────────────────────────
     if do_train:
-        print("\n[TRAIN] Retraining FlyCount model ...")
+        print("\n[TRAIN] Retraining pipeline models ...")
         try:
-            train_fly_count()
+            train_all_models(save_dir=save_dir)
         except Exception as e:
             print(f"  [WARN] Training failed: {e}")
 
@@ -547,7 +605,7 @@ def main(video_path: str = None,
         print(f"[ERROR] Cannot open video: {e}")
         sys.exit(1)
 
-    print(f"        {props['width']}×{props['height']} @ "
+    print(f"        {props['width']}x{props['height']} @ "
           f"{props['fps']:.1f} fps  |  "
           f"{props['frame_count']} total frames  |  "
           f"processing {max_frames}")
@@ -641,7 +699,7 @@ def main(video_path: str = None,
     mean_fps = float(np.mean(fps_log)) if fps_log else 0.0
     total_flies_seen = sum(r["total_flies"] for r in all_results)
 
-    print("\n" + "─" * 62)
+    print("\n" + "-" * 62)
     print(f"  Frames processed : {frame_idx}")
     print(f"  Mean FPS         : {mean_fps:.2f}")
     print(f"  Total fly-frames : {total_flies_seen}")
@@ -655,7 +713,7 @@ def main(video_path: str = None,
             print(f"  [WARN] Could not save summary figure: {e}")
 
     print(f"\n  All outputs saved to: {save_dir}/")
-    print("─" * 62)
+    print("-" * 62)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
