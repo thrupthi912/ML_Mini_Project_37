@@ -27,3 +27,7 @@ synthetic_test.mp4
 # OS
 .DS_Store
 Thumbs.db
+
+.venv/
+in.zip
+input/
