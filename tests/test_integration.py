@@ -2,7 +2,7 @@
 test_integration.py
 -------------------
 Integration tests for the full main.py pipeline.
-Uses synthetic video only — no real dataset required.
+Uses synthetic video only -- no real dataset required.
 Results verify pipeline connectivity and error handling, NOT accuracy.
 """
 import numpy as np
@@ -136,7 +136,7 @@ class TestProcessFrame:
 
     def test_detects_two_flies_in_synthetic_frame(self, pipeline_components):
         """
-        The synthetic frame has exactly 2 fly blobs. Total count must be an integer >= 0.
+        The synthetic frame has 2 fly blobs. Total count must be an integer >= 0.
         """
         models, bg, frame = pipeline_components
         result = process_frame(frame, bg, models)
@@ -153,7 +153,7 @@ class TestProcessFrame:
         """If wing model is not loaded, wing_info must remain empty."""
         models, bg, frame = pipeline_components
         if models["wing"]["ok"]:
-            pytest.skip("Wing model is present — test only applies when absent.")
+            pytest.skip("Wing model is present -- test only applies when absent.")
         result = process_frame(frame, bg, models)
         assert result["wing_info"] == {}
 
@@ -161,7 +161,7 @@ class TestProcessFrame:
         """If sex model is absent, all sex entries must be None."""
         models, bg, frame = pipeline_components
         if models["sex"]["ok"]:
-            pytest.skip("Sex model present — test only applies when absent.")
+            pytest.skip("Sex model present -- test only applies when absent.")
         result = process_frame(frame, bg, models)
         for s in result["sexes"]:
             assert s is None
@@ -211,7 +211,7 @@ class TestAnnotateFrame:
 class TestFPS:
 
     def test_processing_time_measured(self, pipeline_components):
-        """Verify we can measure per-frame time — basic sanity check."""
+        """Verify we can measure per-frame time -- basic sanity check."""
         models, bg, frame = pipeline_components
         t0 = time.perf_counter()
         process_frame(frame, bg, models)

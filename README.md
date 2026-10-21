@@ -192,6 +192,38 @@ python preprocessing.py --video input/video/test4.mp4 --frames 5
 
 ---
 
+## Running Tests
+
+The project includes 123 automated tests across 5 test modules. All tests
+use synthetic data and do not require the real dataset.
+
+```bash
+# Install test dependencies (already included in requirements.txt)
+pip install pytest
+
+# Run the full suite
+python -m pytest tests/ -v
+
+# Run a single module's tests
+python -m pytest tests/test_fly_count.py -v
+python -m pytest tests/test_preprocessing.py -v
+```
+
+Current test results (synthetic data only):
+```
+122 passed, 1 skipped, 11 warnings in ~5s
+```
+
+The 1 skipped test checks behavior when wing models are absent; it is
+skipped only because the wing models exist in this environment.
+
+Tests cover: preprocessing edge cases, threshold polarity, contour
+extraction, feature extraction, label encoding, decision tree training,
+model persistence, orientation moments, HOG features, wing patch
+extraction, pipeline integration, and annotation output.
+
+---
+
 ## What the Pipeline Outputs
 
 After running `main.py`:

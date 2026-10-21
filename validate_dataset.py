@@ -37,9 +37,9 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 # ---------------------------------------------------------------------------
 
 def _sep(title: str):
-    print(f"\n{'─'*58}")
+    print(f"\n{'-'*58}")
     print(f"  {title}")
-    print(f"{'─'*58}")
+    print(f"{'-'*58}")
 
 
 def _check_csv(csv_path: str, required_columns: set, label_col: str = None,
@@ -274,7 +274,7 @@ def validate_videos(video_dir: str):
             fps  = cap.get(cv2.CAP_PROP_FPS)
             w    = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             h    = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            print(f"  [OK]  {vf}: {w}×{h} @ {fps:.1f}fps, {fc} frames")
+            print(f"  [OK]  {vf}: {w}x{h} @ {fps:.1f}fps, {fc} frames")
             cap.release()
         else:
             print(f"  [ERR] Cannot open {vf}")

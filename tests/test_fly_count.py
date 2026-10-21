@@ -2,7 +2,7 @@
 test_fly_count.py
 -----------------
 Unit tests for fly_count.py.
-Synthetic data only — results verify software correctness, NOT real accuracy.
+Synthetic data only -- results verify software correctness, NOT real accuracy.
 """
 import numpy as np
 import cv2
@@ -68,7 +68,7 @@ class TestRuleBasedPredict:
     def test_merged_flies_returns_two(self):
         """Large, lower-solidity blob should return 'two'."""
         mask = np.zeros((240, 320), dtype=np.uint8)
-        # Two side-by-side ellipses that touch — merged blob
+        # Two side-by-side ellipses that touch -- merged blob
         cv2.ellipse(mask, (150, 120), (20, 8), 0, 0, 360, 255, -1)
         cv2.ellipse(mask, (180, 120), (20, 8), 0, 0, 360, 255, -1)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -195,6 +195,7 @@ class TestPredictFlyCount:
     def test_single_fly_contour_predicts_one(self, fly_count_model, synthetic_contour_one):
         """
         The trained Decision Tree should predict a valid class label for a single-fly contour.
+        NOTE: result depends on training data distributions.
         """
         clf, le = fly_count_model
         label = predict_fly_count(clf, le, synthetic_contour_one)

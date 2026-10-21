@@ -294,7 +294,7 @@ def evaluate(model, X_test, y_test, y_pred, cv_scores,
     acc = accuracy_score(y_test, y_pred)
     print(f"\n  Hold-out accuracy  : {acc*100:.2f}%")
     print(f"  5-fold CV accuracy : {cv_scores.mean()*100:.2f}%  "
-          f"(± {cv_scores.std()*100:.2f}%)")
+          f"(+/- {cv_scores.std()*100:.2f}%)")
     print()
     print("  Classification Report:")
     print(classification_report(y_test, y_pred, target_names=CLASS_NAMES))
@@ -591,7 +591,7 @@ def main(csv_path: str = DEFAULT_CSV, save_dir: str = "output"):
     print("=" * 58)
     print()
 
-    # ── Step 1: strict data check ────────────────────────────────────────────
+    # -- Step 1: strict data check --------------------------------------------
     has_data = check_for_labeled_data(csv_path)
 
     if not has_data:
@@ -603,7 +603,7 @@ def main(csv_path: str = DEFAULT_CSV, save_dir: str = "output"):
         print(f"         a model is trained and saved to: {MODEL_PATH}")
         return
 
-    # ── Step 2: load + train ─────────────────────────────────────────────────
+    # -- Step 2: load + train -------------------------------------------------
     print()
     print("[LOAD]  Reading labeled data ...")
     X, y, raw_labels = load_labeled_data(csv_path)
@@ -616,12 +616,12 @@ def main(csv_path: str = DEFAULT_CSV, save_dir: str = "output"):
     model, X_test, y_test, y_pred, cv_scores = train_classifier(X, y)
     print("        Training complete.")
 
-    # ── Step 3: evaluate ─────────────────────────────────────────────────────
+    # -- Step 3: evaluate -----------------------------------------------------
     print()
     print("[EVAL]  Evaluating on held-out test set (25%) ...")
     acc = evaluate(model, X_test, y_test, y_pred, cv_scores, save_dir)
 
-    # ── Step 4: save ─────────────────────────────────────────────────────────
+    # -- Step 4: save ---------------------------------------------------------
     print()
     print("[SAVE]  Saving model ...")
     save_model(model)

@@ -31,3 +31,16 @@ Thumbs.db
 .venv/
 in.zip
 input/
+
+# Temp/debug files (not needed in repo)
+_*.txt
+_*.json
+err.txt
+pytest_out.txt
+audit_blob_debug.py
+audit_inspect.py
+verify_pipeline.py
+
+# Workflow artifacts
+.agents/
+

@@ -6,7 +6,7 @@ Wing-angle estimation for male fruit flies.
 Pipeline
 --------
 1. Image preprocessing
-   - Crop a fixed-size ROI (64×64 px) centred on the male fly's centroid.
+   - Crop a fixed-size ROI (64x64 px) centred on the male fly's centroid.
    - Apply Gaussian blur and CLAHE to enhance wing edges.
    - Split the ROI into left-wing and right-wing sub-regions.
 
@@ -36,7 +36,7 @@ This module checks for labeled wing-angle annotations at startup.
 
 Expected CSV  (input/images/wing_labels.csv)
   patch_path, angle_right_rad, angle_left_rad
-  - patch_path    : path to a 64×64 grayscale PNG of the male fly
+  - patch_path    : path to a 64x64 grayscale PNG of the male fly
   - angle_right_rad : right wing angle in radians (measured from body axis)
   - angle_left_rad  : left wing angle in radians
 
@@ -146,7 +146,7 @@ def _print_data_instructions(csv_path: str):
     print("    ...")
     print()
     print("  What each column means:")
-    print("    patch_path       -- 64×64 grayscale PNG of the male fly ROI")
+    print("    patch_path       -- 64x64 grayscale PNG of the male fly ROI")
     print("    angle_right_rad  -- angle of the right wing from the body axis")
     print("                       measured in radians, range (0, pi)")
     print("    angle_left_rad   -- same for the left wing")
@@ -191,7 +191,7 @@ def preprocess_patch(patch: np.ndarray) -> np.ndarray:
 
     Steps
     -----
-    1. Gaussian blur (3×3) -- suppresses high-frequency sensor noise.
+    1. Gaussian blur (3x3) -- suppresses high-frequency sensor noise.
     2. CLAHE (Contrast Limited Adaptive Histogram Equalization) --
        enhances local contrast so the thin wing edges become detectable
        by HOG even if the original patch has low contrast.
@@ -233,7 +233,7 @@ def hog_features(region: np.ndarray) -> np.ndarray:
     """
     Compute HOG features for one wing sub-region.
 
-    The region is resized to PATCH_H × PATCH_W before computing HOG so
+    The region is resized to PATCH_H x PATCH_W before computing HOG so
     all feature vectors have the same length regardless of input size.
 
     Why HOG for wings?
@@ -263,7 +263,7 @@ def patch_to_hog_vector(patch: np.ndarray) -> np.ndarray:
 
     Returns
     -------
-    feat_vec : 1-D float64 array  length = 2 × hog_dim
+    feat_vec : 1-D float64 array  length = 2 x hog_dim
     """
     preprocessed      = preprocess_patch(patch)
     left_w, right_w   = split_wing_regions(preprocessed)
@@ -321,7 +321,7 @@ def train_wing_angle_model(X: np.ndarray,
     Train a PCA + LinearRegression pipeline for one wing angle target.
 
     Why PCA before regression?
-      HOG produces ~3500 features for a 64×64 patch.  Linear Regression
+      HOG produces ~3500 features for a 64x64 patch.  Linear Regression
       on raw HOG would overfit on small datasets (typical labeling
       yields a few hundred examples).  PCA retains the top 30 components
       which together capture the dominant gradient structure, stripping
@@ -453,7 +453,7 @@ def visualize_patch_pipeline(patch: np.ndarray,
 
     # Panel 1: raw patch
     axes[0].imshow(patch, cmap="gray", vmin=0, vmax=255)
-    axes[0].set_title("Raw patch (64×64)", fontsize=9)
+    axes[0].set_title("Raw patch (64x64)", fontsize=9)
 
     # Panel 2: preprocessed
     vis_pre = cv2.cvtColor(preprocessed, cv2.COLOR_GRAY2BGR)
@@ -691,10 +691,10 @@ def main(csv_path: str = DEFAULT_CSV,
     print("=" * 58)
     print()
 
-    # ── Step 1: data check ───────────────────────────────────────────────────
+    # -- Step 1: data check ---------------------------------------------------
     has_data = check_for_labeled_data(csv_path)
 
-    # ── Step 2: preprocessing + visualization demo (always runs) ────────────
+    # -- Step 2: preprocessing + visualization demo (always runs) ------------
     print()
     print("[PREPROCESS]  Running preprocessing demo on a video frame ...")
     if video_path is None or not os.path.exists(video_path):
@@ -703,7 +703,7 @@ def main(csv_path: str = DEFAULT_CSV,
     _run_preprocessing_demo(video_path, save_dir)
 
     if not has_data:
-        # ── No labels: stop here cleanly ─────────────────────────────────
+        # -- No labels: stop here cleanly ---------------------------------
         print()
         print("[STATUS]  Preprocessing and visualization complete.")
         print("          Regression model NOT trained -- labeled data required.")
@@ -711,7 +711,7 @@ def main(csv_path: str = DEFAULT_CSV,
         print("          predict_wing_angles() returns None until models exist.")
         return
 
-    # ── Step 3: load labeled data ────────────────────────────────────────────
+    # -- Step 3: load labeled data --------------------------------------------
     print()
     print("[LOAD]  Reading labeled patches ...")
     patches, angles_right, angles_left = load_labeled_data(csv_path)
@@ -744,13 +744,13 @@ def main(csv_path: str = DEFAULT_CSV,
                              save_path=os.path.join(save_dir,
                                                     "wing_angle_pipeline_sample.png"))
 
-    # ── Step 4: feature extraction ───────────────────────────────────────────
+    # -- Step 4: feature extraction -------------------------------------------
     print()
     print("[FEAT]  Extracting HOG features ...")
     X = build_feature_matrix(patches)
-    print(f"        Feature matrix: {X.shape}  (samples × HOG dims)")
+    print(f"        Feature matrix: {X.shape}  (samples x HOG dims)")
 
-    # ── Step 5: train ────────────────────────────────────────────────────────
+    # -- Step 5: train --------------------------------------------------------
     print()
     print("[TRAIN]  Fitting PCA + LinearRegression ...")
     model_r, Xte_r, yte_r, ypr_r = train_wing_angle_model(
@@ -762,7 +762,7 @@ def main(csv_path: str = DEFAULT_CSV,
     print(f"         PCA ({PCA_COMPONENTS} components) retains "
           f"{expl*100:.1f}% of variance.")
 
-    # ── Step 6: evaluate on real test set ────────────────────────────────────
+    # -- Step 6: evaluate on real test set ------------------------------------
     print()
     print("[EVAL]  Evaluating on held-out test set (25%) ...")
     mae_r, rmse_r = evaluate_regression(yte_r, ypr_r, wing="right",
@@ -770,7 +770,7 @@ def main(csv_path: str = DEFAULT_CSV,
     mae_l, rmse_l = evaluate_regression(yte_l, ypr_l, wing="left",
                                         save_dir=save_dir)
 
-    # ── Step 7: save ─────────────────────────────────────────────────────────
+    # -- Step 7: save ---------------------------------------------------------
     print()
     print("[SAVE]  Saving models ...")
     save_wing_models(model_r, model_l)
