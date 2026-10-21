@@ -53,7 +53,7 @@ import matplotlib
 matplotlib.use("Agg")          # non-interactive; safe on all systems
 import matplotlib.pyplot as plt
 
-# ── Local modules ──────────────────────────────────────────────────────────
+# -- Local modules ----------------------------------------------------------
 from preprocessing import (
     make_synthetic_video, load_video, compute_background,
     read_frames, threshold_frame, extract_contours, contour_features,
@@ -69,6 +69,7 @@ from orientation import (
 from sex_classification import (
     load_model as load_sex_model,
     predict_sex,
+    classify_pair,
 )
 from wing_angle import (
     load_wing_models, predict_wing_angles, extract_fly_patch,
@@ -76,7 +77,7 @@ from wing_angle import (
 )
 
 
-# ── Visual constants ───────────────────────────────────────────────────────
+# -- Visual constants -------------------------------------------------------
 FONT       = cv2.FONT_HERSHEY_SIMPLEX
 CLR_ONE    = (0, 200,   0)   # green  -- single fly contour
 CLR_TWO    = (0, 100, 255)   # orange -- merged pair contour
@@ -89,9 +90,9 @@ CLR_WHITE  = (255, 255, 255)
 CLR_BLACK  = (  0,   0,   0)
 
 
-# ═══════════════════════════════════════════════════════════════════════════
+# ???????????????????????????????????????????????????????????????????????????
 # MODEL LOADING
-# ═══════════════════════════════════════════════════════════════════════════
+# ???????????????????????????????????????????????????????????????????????????
 
 def load_all_models() -> dict:
     """
@@ -163,9 +164,9 @@ def _module_summary(models: dict) -> str:
     return "  ".join(parts)
 
 
-# ═══════════════════════════════════════════════════════════════════════════
+# ???????????????????????????????????????????????????????????????????????????
 # PER-FRAME PROCESSING
-# ═══════════════════════════════════════════════════════════════════════════
+# ???????????????????????????????????????????????????????????????????????????
 
 def process_frame(frame: np.ndarray,
                   background: np.ndarray,
@@ -173,17 +174,33 @@ def process_frame(frame: np.ndarray,
     """
     Run the full analysis pipeline on one grayscale frame.
 
-    Errors inside individual module calls are caught and reported per
-    contour so one bad contour never aborts the whole frame.
+    Pipeline logic (per-contour):
+    -----------------------------
+    1. FlyCount classifies every contour as "zero" / "one" / "two".
+    2. Only "one" contours proceed to orientation and sex.
+       "zero" (noise) and "two" (merged pair) are skipped -- running
+       orientation or sex on them produces meaningless results.
+    3. Sex assignment:
+       - If exactly two "one" contours are found AND a sex model is
+         loaded, classify_pair() is used so the two predictions are
+         mutually consistent (one male + one female).
+       - Otherwise each "one" contour is classified independently.
+    4. Wing-angle prediction runs ONLY on the contour identified as
+       "male".  Running it on the female or on merged/noise blobs
+       would be scientifically wrong.
+
+    Errors inside any module call are caught per-contour so one bad
+    contour never aborts the whole frame.
 
     Returns
     -------
     dict with keys:
-        contours    : list of OpenCV contours
-        labels      : list of str  ("zero"/"one"/"two") -- fly count per contour
+        contours    : list of OpenCV contours (all detected)
+        labels      : list of str  ("zero"/"one"/"two")
         counts      : list of int  (0/1/2)
-        orientations: list of float or None  (radians)
-        sexes       : list of str or None    ("male"/"female"/"unknown")
+        orientations: list of float or None  -- None for non-"one" contours
+        sexes       : list of str/None       -- None for non-"one" or no model
+        sex_probs   : list of float or None  -- confidence [0,1] for sex pred
         wing_info   : dict {contour_idx: {"right": float, "left": float}}
         total_flies : int
         errors      : list of str  (non-fatal errors encountered)
@@ -191,18 +208,16 @@ def process_frame(frame: np.ndarray,
     mask     = threshold_frame(frame, background)
     contours = extract_contours(mask)
 
-    labels, counts, orientations, sexes = [], [], [], []
-    wing_info = {}
-    errors    = []
+    labels, counts = [], []
+    errors = []
 
     fc   = models["fly_count"]
     ori  = models["orientation"]
     sex  = models["sex"]
     wing = models["wing"]
 
+    # -- Pass 1: FlyCount for every contour ----------------------------------
     for i, contour in enumerate(contours):
-
-        # ── Fly count ───────────────────────────────────────────────────────
         try:
             if fc["ok"]:
                 label = predict_fly_count(fc["clf"], fc["le"], contour)
@@ -211,11 +226,54 @@ def process_frame(frame: np.ndarray,
         except Exception as e:
             label = "zero"
             errors.append(f"FlyCount contour {i}: {e}")
-
         labels.append(label)
         counts.append(label_to_count(label))
 
-        # ── Centroid + patch ────────────────────────────────────────────────
+    # -- Pass 2: sex assignment for "one" contours ----------------------------
+    # Identify which contour indices are single-fly blobs.
+    one_indices = [i for i, lbl in enumerate(labels) if lbl == "one"]
+
+    # Pre-fill sexes / probs with None for every contour.
+    sexes     = [None] * len(contours)
+    sex_probs = [None] * len(contours)
+
+    if sex["ok"] and len(one_indices) == 2:
+        # Exactly two single-fly contours: use pair-ranking for consistency.
+        # classify_pair() compares P(male) for both and assigns exactly one
+        # male and one female, which is correct for a one-male/one-female arena.
+        ia, ib = one_indices
+        try:
+            pair_result = classify_pair(contours[ia], contours[ib],
+                                        model=sex["model"])
+            if pair_result is not None:
+                # pair_result["male"] is the contour object, not the index.
+                # Identify which index is male by object identity.
+                if pair_result["male"] is contours[ia]:
+                    sexes[ia], sex_probs[ia] = "male",   pair_result["male_prob"]
+                    sexes[ib], sex_probs[ib] = "female", pair_result["female_prob"]
+                else:
+                    sexes[ia], sex_probs[ia] = "female", pair_result["female_prob"]
+                    sexes[ib], sex_probs[ib] = "male",   pair_result["male_prob"]
+        except Exception as e:
+            errors.append(f"classify_pair: {e}")
+
+    elif sex["ok"] and len(one_indices) == 1:
+        # Single detected fly: classify independently.
+        i = one_indices[0]
+        try:
+            sex_label, prob = predict_sex(sex["model"], contours[i])
+            sexes[i]     = sex_label
+            sex_probs[i] = prob
+        except Exception as e:
+            errors.append(f"Sex contour {i}: {e}")
+
+    # (If sex model is absent, sexes stays all-None.)
+
+    # -- Pass 3: orientation -- only for "one" contours ----------------------
+    orientations = [None] * len(contours)
+
+    for i in one_indices:
+        contour = contours[i]
         M = cv2.moments(contour)
         if M["m00"] > 0:
             cx = int(M["m10"] / M["m00"])
@@ -225,38 +283,40 @@ def process_frame(frame: np.ndarray,
             cx, cy = x + w // 2, y + h // 2
 
         patch = extract_fly_patch(frame, cx, cy)
-
-        # ── Orientation ─────────────────────────────────────────────────────
         if patch is not None:
             try:
-                angle = predict_orientation(patch,
-                                            model=ori["model"] if ori["ok"] else None)
-                orientations.append(angle)
+                angle = predict_orientation(
+                    patch,
+                    model=ori["model"] if ori["ok"] else None)
+                orientations[i] = angle
             except Exception as e:
-                orientations.append(None)
                 errors.append(f"Orientation contour {i}: {e}")
-        else:
-            orientations.append(None)
 
-        # ── Sex classification ───────────────────────────────────────────────
-        if sex["ok"] and patch is not None:
-            try:
-                sex_label, _ = predict_sex(sex["model"], contour)
-                sexes.append(sex_label)
-            except Exception as e:
-                sexes.append("unknown")
-                errors.append(f"Sex contour {i}: {e}")
-        else:
-            sexes.append(None)   # None = module unavailable (not "unknown")
+    # -- Pass 4: wing angles -- only for the male "one" contour --------------
+    wing_info = {}
 
-        # ── Wing angles ──────────────────────────────────────────────────────
-        if label == "one" and patch is not None and wing["ok"]:
-            try:
-                result = predict_wing_angles(wing["right"], wing["left"], patch)
-                if result is not None:
-                    wing_info[i] = {"right": result[0], "left": result[1]}
-            except Exception as e:
-                errors.append(f"Wing contour {i}: {e}")
+    if wing["ok"]:
+        for i in one_indices:
+            if sexes[i] != "male":
+                # Skip female, unknown, or unclassified contours.
+                continue
+            contour = contours[i]
+            M = cv2.moments(contour)
+            if M["m00"] > 0:
+                cx = int(M["m10"] / M["m00"])
+                cy = int(M["m01"] / M["m00"])
+            else:
+                x, y, w, h = cv2.boundingRect(contour)
+                cx, cy = x + w // 2, y + h // 2
+            patch = extract_fly_patch(frame, cx, cy)
+            if patch is not None:
+                try:
+                    result = predict_wing_angles(
+                        wing["right"], wing["left"], patch)
+                    if result is not None:
+                        wing_info[i] = {"right": result[0], "left": result[1]}
+                except Exception as e:
+                    errors.append(f"Wing contour {i}: {e}")
 
     total = sum(counts)
     return {
@@ -265,15 +325,16 @@ def process_frame(frame: np.ndarray,
         "counts":       counts,
         "orientations": orientations,
         "sexes":        sexes,
+        "sex_probs":    sex_probs,
         "wing_info":    wing_info,
         "total_flies":  total,
         "errors":       errors,
     }
 
 
-# ═══════════════════════════════════════════════════════════════════════════
+# ???????????????????????????????????????????????????????????????????????????
 # FRAME ANNOTATION
-# ═══════════════════════════════════════════════════════════════════════════
+# ???????????????????????????????????????????????????????????????????????????
 
 def _put_text_bg(img, text, org, font_scale=0.38, thickness=1,
                  fg=CLR_WHITE, bg=CLR_BLACK):
@@ -293,17 +354,16 @@ def annotate_frame(frame: np.ndarray,
 
     Annotations per contour
     -----------------------
-    - Coloured outline (green=one, orange=two, grey=zero)
-    - Fly-count label + area in pixels
-    - Orientation arrow (cyan)  -- always drawn from moments baseline or model
-    - Sex label (orange=male, blue=female) -- drawn only when model is available
-    - Wing angle arrows (orange=right, blue=left) -- drawn only when available
+    - Coloured outline: green = one fly, orange = two merged, grey = zero/noise
+    - Fly-count label + area
+    - Orientation arrow (cyan): only on "one" contours
+    - Sex label with confidence %: e.g. "M 84%" or "F 91%"
+      Only on "one" contours where a sex model is loaded.
+    - Wing angle arrows (orange = right, blue = left): only on the male contour
 
     HUD (top-left corner)
     ---------------------
-    - FPS counter
-    - Total fly count
-    - One line per module showing its status (active / unavailable)
+    FPS, total fly count, per-module active/unavailable status.
     """
     out = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
 
@@ -326,7 +386,11 @@ def annotate_frame(frame: np.ndarray,
         _put_text_bg(out, f"{label}({area})", (cx - 2, cy - 14),
                      fg=clr, bg=CLR_BLACK)
 
-        # ── Orientation arrow ───────────────────────────────────────────────
+        # Only draw orientation / sex / wing for single-fly contours
+        if label != "one":
+            continue
+
+        # -- Orientation arrow -----------------------------------------------
         ang = result["orientations"][i] if i < len(result["orientations"]) else None
         if ang is not None:
             arr = 22
@@ -337,21 +401,25 @@ def annotate_frame(frame: np.ndarray,
             cv2.arrowedLine(out, (cx, cy), (tx, ty),
                             CLR_ORIENT, 2, tipLength=0.35)
 
-        # ── Sex label ───────────────────────────────────────────────────────
-        sex_val = result["sexes"][i] if i < len(result["sexes"]) else None
+        # -- Sex label with confidence ----------------------------------------
+        sex_val  = result["sexes"][i]     if i < len(result["sexes"])     else None
+        sex_prob = result["sex_probs"][i] if i < len(result["sex_probs"]) else None
+
         if sex_val is not None:
             sex_clr = (0, 140, 255) if sex_val == "male" else (255, 60, 0)
-            _put_text_bg(out, sex_val[0].upper(),   # "M" or "F"
-                         (cx + 16, cy - 14), fg=sex_clr)
+            if sex_prob is not None:
+                label_txt = f"{sex_val[0].upper()} {sex_prob*100:.0f}%"
+            else:
+                label_txt = sex_val[0].upper()
+            _put_text_bg(out, label_txt, (cx + 16, cy - 14), fg=sex_clr)
         elif not models["sex"]["ok"]:
             _put_text_bg(out, "sex:N/A", (cx + 4, cy - 14), fg=CLR_UNAVAIL)
 
-        # ── Wing angle arrows ───────────────────────────────────────────────
+        # -- Wing angle arrows (male only) ------------------------------------
         if i in result["wing_info"]:
             wi  = result["wing_info"][i]
             arm = 28
             if ang is not None:
-                # Right wing
                 ra  = ang + wi["right"] - np.pi
                 rxe = int(cx + arm * np.cos(ra))
                 rye = int(cy - arm * np.sin(ra))
@@ -359,7 +427,6 @@ def annotate_frame(frame: np.ndarray,
                                 (np.clip(rxe, 0, out.shape[1]-1),
                                  np.clip(rye, 0, out.shape[0]-1)),
                                 CLR_WING_R, 1, tipLength=0.3)
-                # Left wing
                 la  = ang - wi["left"] - np.pi
                 lxe = int(cx + arm * np.cos(la))
                 lye = int(cy - arm * np.sin(la))
@@ -367,15 +434,14 @@ def annotate_frame(frame: np.ndarray,
                                 (np.clip(lxe, 0, out.shape[1]-1),
                                  np.clip(lye, 0, out.shape[0]-1)),
                                 CLR_WING_L, 1, tipLength=0.3)
-            # Text below centroid
             wr_deg = np.degrees(wi["right"])
             wl_deg = np.degrees(wi["left"])
             _put_text_bg(out, f"R:{wr_deg:.0f} L:{wl_deg:.0f}",
                          (cx - 20, cy + 20), fg=(180, 100, 255))
-        elif label == "one" and not models["wing"]["ok"]:
+        elif sex_val == "male" and not models["wing"]["ok"]:
             _put_text_bg(out, "wing:N/A", (cx - 20, cy + 20), fg=CLR_UNAVAIL)
 
-    # ── HUD ─────────────────────────────────────────────────────────────────
+    # -- HUD -----------------------------------------------------------------
     hud_lines = [
         f"FPS: {fps:.1f}",
         f"Flies: {result['total_flies']}",
@@ -394,7 +460,7 @@ def annotate_frame(frame: np.ndarray,
         _put_text_bg(out, line, (6, y0), font_scale=0.36, fg=fg)
         y0 += 15
 
-    # ── Error indicator ──────────────────────────────────────────────────────
+    # -- Error indicator ------------------------------------------------------
     if result["errors"]:
         _put_text_bg(out, f"warn:{len(result['errors'])}",
                      (out.shape[1] - 80, 16), font_scale=0.36,
@@ -403,9 +469,9 @@ def annotate_frame(frame: np.ndarray,
     return out
 
 
-# ═══════════════════════════════════════════════════════════════════════════
+# ???????????????????????????????????????????????????????????????????????????
 # SUMMARY FIGURE  (matplotlib, saved to disk)
-# ═══════════════════════════════════════════════════════════════════════════
+# ???????????????????????????????????????????????????????????????????????????
 
 def save_summary_figure(annotated_bgr_frames: list,
                         results: list,
@@ -431,9 +497,9 @@ def save_summary_figure(annotated_bgr_frames: list,
     print(f"  Summary figure -> {save_path}")
 
 
-# ═══════════════════════════════════════════════════════════════════════════
+# ???????????????????????????????????????????????????????????????????????????
 # CONSOLE TABLE
-# ═══════════════════════════════════════════════════════════════════════════
+# ???????????????????????????????????????????????????????????????????????????
 
 def _print_frame_result(frame_idx: int, result: dict, fps: float):
     """Print a compact per-frame result table to stdout."""
@@ -446,23 +512,25 @@ def _print_frame_result(frame_idx: int, result: dict, fps: float):
             result["labels"], result["counts"],
             result["orientations"], result["sexes"])):
 
-        ang_s = f"{np.degrees(ang):+6.1f} deg" if ang is not None else "  N/A  "
-        sx_s  = sx if sx is not None else "N/A"
-        wi    = result["wing_info"].get(i)
+        ang_s  = f"{np.degrees(ang):+6.1f} deg" if ang is not None else "  N/A  "
+        prob   = result["sex_probs"][i]
+        sx_s   = (f"{sx} {prob*100:.0f}%" if sx is not None and prob is not None
+                  else (sx if sx is not None else "N/A"))
+        wi     = result["wing_info"].get(i)
         wing_s = (f"R{np.degrees(wi['right']):+.0f} deg L{np.degrees(wi['left']):+.0f} deg"
                   if wi else "")
 
         print(f"    [{i}] {lbl:4s} n={cnt}  "
-              f"orient={ang_s}  sex={sx_s:7s}  {wing_s}")
+              f"orient={ang_s}  sex={sx_s:12s}  {wing_s}")
 
     if result["errors"]:
         for e in result["errors"]:
             print(f"    WARN: {e}")
 
 
-# ═══════════════════════════════════════════════════════════════════════════
+# ???????????????????????????????????????????????????????????????????????????
 # TRAIN HELPERS
-# ═══════════════════════════════════════════════════════════════════════════
+# ???????????????????????????????????????????????????????????????????????????
 
 def train_fly_count():
     """Train (or retrain) the FlyCount Decision Tree on synthetic data."""
@@ -470,9 +538,9 @@ def train_fly_count():
     fly_count.main(data_csv=None, save_dir="output")
 
 
-# ═══════════════════════════════════════════════════════════════════════════
+# ???????????????????????????????????????????????????????????????????????????
 # MAIN
-# ═══════════════════════════════════════════════════════════════════════════
+# ???????????????????????????????????????????????????????????????????????????
 
 def main(video_path: str = None,
          do_train: bool = False,
@@ -496,7 +564,7 @@ def main(video_path: str = None,
     print("  Fruit Fly Video Analysis -- Group 37")
     print("=" * 62)
 
-    # ── Optional retrain ────────────────────────────────────────────────────
+    # -- Optional retrain ----------------------------------------------------
     if do_train:
         print("\n[TRAIN] Retraining FlyCount model ...")
         try:
@@ -504,7 +572,7 @@ def main(video_path: str = None,
         except Exception as e:
             print(f"  [WARN] Training failed: {e}")
 
-    # ── Load models ──────────────────────────────────────────────────────────
+    # -- Load models ----------------------------------------------------------
     print("\n[LOAD]  Loading models ...")
     models = load_all_models()
 
@@ -521,7 +589,7 @@ def main(video_path: str = None,
 
     print(f"\n  Module summary: {_module_summary(models)}")
 
-    # ── Video source ─────────────────────────────────────────────────────────
+    # -- Video source ---------------------------------------------------------
     print()
     if video_path is None or not os.path.isfile(video_path):
         if video_path is not None:
@@ -537,12 +605,12 @@ def main(video_path: str = None,
         print(f"[ERROR] Cannot open video: {e}")
         sys.exit(1)
 
-    print(f"        {props['width']}×{props['height']} @ "
+    print(f"        {props['width']}x{props['height']} @ "
           f"{props['fps']:.1f} fps  |  "
           f"{props['frame_count']} total frames  |  "
           f"processing {max_frames}")
 
-    # ── Background model ─────────────────────────────────────────────────────
+    # -- Background model -----------------------------------------------------
     print("\n[BG]    Computing background model ...")
     n_bg = min(50, props["frame_count"])
     try:
@@ -552,7 +620,7 @@ def main(video_path: str = None,
         background = None
         cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
-    # ── Live window setup ────────────────────────────────────────────────────
+    # -- Live window setup ----------------------------------------------------
     WIN = "Fruit Fly Analysis  [q = quit]"
     if display:
         try:
@@ -562,7 +630,7 @@ def main(video_path: str = None,
             display = False
             print("  [WARN] OpenCV display unavailable -- headless mode.")
 
-    # ── Frame loop ───────────────────────────────────────────────────────────
+    # -- Frame loop -----------------------------------------------------------
     print(f"\n[RUN]   Processing frames ...\n")
 
     annotated_frames = []
@@ -575,7 +643,7 @@ def main(video_path: str = None,
     for frame in frame_gen:
         t_start = time.perf_counter()
 
-        # ── Analyse ─────────────────────────────────────────────────────────
+        # -- Analyse ---------------------------------------------------------
         try:
             result = process_frame(frame, background, models)
         except Exception as e:
@@ -588,15 +656,15 @@ def main(video_path: str = None,
         fps   = 1.0 / max(t_end - t_start, 1e-9)
         fps_log.append(fps)
 
-        # ── Annotate ─────────────────────────────────────────────────────────
+        # -- Annotate ---------------------------------------------------------
         annotated = annotate_frame(frame, result, models, fps=fps)
         annotated_frames.append(annotated)
         all_results.append(result)
 
-        # ── Console output ───────────────────────────────────────────────────
+        # -- Console output ---------------------------------------------------
         _print_frame_result(frame_idx, result, fps)
 
-        # ── Live display ─────────────────────────────────────────────────────
+        # -- Live display -----------------------------------------------------
         if display:
             try:
                 cv2.imshow(WIN, annotated)
@@ -607,7 +675,7 @@ def main(video_path: str = None,
             except Exception:
                 display = False
 
-        # ── Save individual frame ────────────────────────────────────────────
+        # -- Save individual frame --------------------------------------------
         frame_path = os.path.join(save_dir, f"frame_{frame_idx:04d}.png")
         try:
             cv2.imwrite(frame_path, annotated)
@@ -620,11 +688,11 @@ def main(video_path: str = None,
     if display:
         cv2.destroyAllWindows()
 
-    # ── Summary ──────────────────────────────────────────────────────────────
+    # -- Summary --------------------------------------------------------------
     mean_fps = float(np.mean(fps_log)) if fps_log else 0.0
     total_flies_seen = sum(r["total_flies"] for r in all_results)
 
-    print("\n" + "─" * 62)
+    print("\n" + "-" * 62)
     print(f"  Frames processed : {frame_idx}")
     print(f"  Mean FPS         : {mean_fps:.2f}")
     print(f"  Total fly-frames : {total_flies_seen}")
@@ -638,12 +706,12 @@ def main(video_path: str = None,
             print(f"  [WARN] Could not save summary figure: {e}")
 
     print(f"\n  All outputs saved to: {save_dir}/")
-    print("─" * 62)
+    print("-" * 62)
 
 
-# ═══════════════════════════════════════════════════════════════════════════
+# ???????????????????????????????????????????????????????????????????????????
 # CLI
-# ═══════════════════════════════════════════════════════════════════════════
+# ???????????????????????????????????????????????????????????????????????????
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
