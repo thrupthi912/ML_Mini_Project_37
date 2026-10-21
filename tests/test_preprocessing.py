@@ -2,7 +2,7 @@
 test_preprocessing.py
 ---------------------
 Unit tests for preprocessing.py.
-All tests use synthetic fixtures — results verify software behaviour only.
+All tests use synthetic fixtures -- results verify software behaviour only.
 """
 import numpy as np
 import cv2
@@ -43,7 +43,7 @@ class TestThresholdFrame:
         """Uniform frame should produce no or minimal foreground."""
         mask = threshold_frame(empty_frame, background=None)
         # After Otsu on uniform frame, result may be all-0 or all-255
-        # Either is acceptable — the key check is that extract_contours filters it
+        # Either is acceptable -- the key check is that extract_contours filters it
         assert mask.dtype == np.uint8
 
     def test_morphological_closing_fills_holes(self, synthetic_frame, synthetic_background):
@@ -91,7 +91,7 @@ class TestExtractContours:
     def test_min_area_filter_removes_noise(self):
         """Blobs below min_area must be filtered out."""
         mask = np.zeros((240, 320), dtype=np.uint8)
-        cv2.circle(mask, (50, 50), 2, 255, -1)   # ~12 px² — below min_area=50
+        cv2.circle(mask, (50, 50), 2, 255, -1)   # ~12 px sq -- below min_area=50
         contours = extract_contours(mask, min_area=50)
         assert len(contours) == 0
 

@@ -2,7 +2,7 @@
 test_orientation.py
 -------------------
 Unit tests for orientation.py.
-Synthetic patches only — no real labeled data required.
+Synthetic patches only -- no real labeled data required.
 """
 import numpy as np
 import cv2
@@ -21,24 +21,24 @@ class TestMomentsOrientation:
         patch = np.full((64, 64), 200, dtype=np.uint8)
         cv2.ellipse(patch, (32, 32), (25, 5), 0, 0, 360, 30, -1)
         angle = moments_orientation(patch)
-        assert abs(np.degrees(angle)) < 5, f"Horizontal ellipse gave {np.degrees(angle):.1f}°"
+        assert abs(np.degrees(angle)) < 5, f"Horizontal ellipse gave {np.degrees(angle):.1f} deg"
 
     def test_vertical_ellipse_near_90(self):
         patch = np.full((64, 64), 200, dtype=np.uint8)
         cv2.ellipse(patch, (32, 32), (5, 25), 0, 0, 360, 30, -1)
         angle = moments_orientation(patch)
-        # moments returns angle in (-pi/2, pi/2); vertical = ±90°
-        assert abs(abs(np.degrees(angle)) - 90) < 5, f"Vertical ellipse gave {np.degrees(angle):.1f}°"
+        # moments returns angle in (-pi/2, pi/2); vertical = +/-90 deg
+        assert abs(abs(np.degrees(angle)) - 90) < 5, f"Vertical ellipse gave {np.degrees(angle):.1f} deg"
 
     def test_45_degree_ellipse(self):
         patch = np.full((64, 64), 200, dtype=np.uint8)
         cv2.ellipse(patch, (32, 32), (25, 5), 45, 0, 360, 30, -1)
         angle = moments_orientation(patch)
-        assert abs(abs(np.degrees(angle)) - 45) < 5, f"45° ellipse gave {np.degrees(angle):.1f}°"
+        assert abs(abs(np.degrees(angle)) - 45) < 5, f"45 deg ellipse gave {np.degrees(angle):.1f} deg"
 
     def test_circular_blob_returns_zero(self, circular_patch):
         angle = moments_orientation(circular_patch)
-        assert abs(angle) < 0.01, f"Circular blob gave {np.degrees(angle):.2f}°, expected 0.0°"
+        assert abs(angle) < 0.01, f"Circular blob gave {np.degrees(angle):.2f} deg, expected 0.0 deg"
 
     def test_empty_patch_returns_zero(self, empty_frame):
         patch = empty_frame[:64, :64]
@@ -57,16 +57,16 @@ class TestMomentsOrientation:
     def test_180_degree_ambiguity_documented(self, tiny_patch):
         """
         Verify that both theta and theta+pi give the same moments result.
-        This is the documented 180° ambiguity of image moments.
+        This is the documented 180 deg ambiguity of image moments.
         """
         angle = moments_orientation(tiny_patch)
-        # Rotating the patch 180° should give the same axis angle
+        # Rotating the patch 180 deg should give the same axis angle
         rotated = cv2.rotate(tiny_patch, cv2.ROTATE_180)
         angle_rotated = moments_orientation(rotated)
-        # The axis angle should be very close (within 5°)
+        # The axis angle should be very close (within 5 deg)
         diff = abs(np.degrees(angle) - np.degrees(angle_rotated))
-        diff = min(diff, 180 - diff)  # account for ±180° equivalence
-        assert diff < 5, f"180° rotated patch gave different axis: {diff:.1f}° difference"
+        diff = min(diff, 180 - diff)  # account for +/-180 deg equivalence
+        assert diff < 5, f"180 deg rotated patch gave different axis: {diff:.1f} deg difference"
 
 
 class TestExtractHogFeatures:

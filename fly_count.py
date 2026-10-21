@@ -130,9 +130,9 @@ def rule_based_predict(contour) -> str:
     area >= 80 AND solidity <= 0.85 -> "two"  (merged pair, less compact)
 
     Why area?
-      A single fruit fly occupies roughly 200-350 px² in a 320×240 arena.
-      Two touching flies form a blob roughly twice as large (400-650 px²).
-      Noise/dust blobs are typically smaller than 80 px².
+      A single fruit fly occupies roughly 200-350 px sq in a 320x240 arena.
+      Two touching flies form a blob roughly twice as large (400-650 px sq).
+      Noise/dust blobs are typically smaller than 80 px sq.
 
     Why solidity (area / convex_hull_area)?
       A single fly body is a compact ellipse -> solidity ~0.90-0.98.
@@ -142,7 +142,7 @@ def rule_based_predict(contour) -> str:
       1. Camera distance or arena size differs from the training conditions,
          making the pixel area thresholds incorrect.
       2. Flies are partially occluded by the arena wall, reducing apparent area.
-      3. Debris or reflections create blobs in the 80-350 px² range.
+      3. Debris or reflections create blobs in the 80-350 px sq range.
       4. Two flies are touching but happen to be well-aligned, giving high
          solidity and being misclassified as "one".
       5. A single fly is at the edge of the frame and clipped, reducing area.
@@ -202,7 +202,7 @@ def load_labeled_data(csv_path: str):
 def make_synthetic_dataset(n_per_class: int = 150, random_state: int = 42):
     """
     Synthetic feature distributions calibrated to the synthetic video
-    (320×240 arena, ellipse flies ~12×7 px -> area ≈265 px²).
+    (320x240 arena, ellipse flies ~12x7 px -> area ?265 px sq).
 
     NOTE: This is only used to demonstrate the Decision Tree pipeline.
     Performance on real video data will differ.
@@ -540,13 +540,13 @@ def main(data_csv: str = None,
     print("  FlyCount Module -- Stage 1")
     print("=" * 58)
 
-    # ── Step 1: check for labeled data ──────────────────────────────────────
+    # -- Step 1: check for labeled data --------------------------------------
     has_real_data = check_for_labeled_data(data_csv)
 
     clf, le = None, None
 
     if has_real_data:
-        # ── Step 2a: train Decision Tree on real labels ──────────────────
+        # -- Step 2a: train Decision Tree on real labels ------------------
         print("\n[TRAIN] Loading labeled data ...")
         X, y, le = load_labeled_data(data_csv)
         dist = {le.classes_[i]: int((y == i).sum()) for i in range(len(le.classes_))}
@@ -564,14 +564,14 @@ def main(data_csv: str = None,
         print(f"\n[DONE]  Decision Tree trained.  Test accuracy: {acc*100:.2f}%")
 
     else:
-        # ── Step 2b: rule-based baseline + Decision Tree demo ────────────
+        # -- Step 2b: rule-based baseline + Decision Tree demo ------------
         print("\n[MODE]  RULE-BASED BASELINE active (no labeled data).")
-        print("        Rules: area<80->zero | area≥80 & solidity>0.85->one | else->two")
+        print("        Rules: area<80->zero | area>=80 & solidity>0.85->one | else->two")
         print()
         print("        LIMITATIONS of the rule-based baseline:")
         print("          1. Area thresholds break if camera distance changes.")
         print("          2. Occluded or clipped flies are misclassified.")
-        print("          3. Debris in the 80-350 px² range causes false positives.")
+        print("          3. Debris in the 80-350 px sq range causes false positives.")
         print("          4. Well-aligned merged flies fool the solidity rule.")
         print("          5. No generalisation -- any arena/lighting change breaks it.")
         print()
@@ -590,7 +590,7 @@ def main(data_csv: str = None,
         print("        NOTE: this accuracy is on synthetic data only.")
         print("              Provide fly_count_labels.csv for real training.")
 
-    # ── Step 3: test on a sample frame ──────────────────────────────────────
+    # -- Step 3: test on a sample frame --------------------------------------
     print("\n[TEST]  Running on a sample video frame ...")
 
     if video_path is None or not os.path.exists(video_path):

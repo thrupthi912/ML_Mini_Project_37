@@ -2,7 +2,7 @@
 test_wing_angle.py
 ------------------
 Unit tests for wing_angle.py.
-Synthetic patches only — no real labeled data required.
+Synthetic patches only -- no real labeled data required.
 Results verify software correctness only, NOT wing-angle prediction accuracy.
 """
 import numpy as np
@@ -125,7 +125,7 @@ class TestHogFeatures:
         assert np.all(np.isfinite(feat))
 
     def test_consistent_length_across_patches(self, tiny_patch, circular_patch):
-        """HOG must produce same-length vectors for all PATCH_H×PATCH_W inputs."""
+        """HOG must produce same-length vectors for all PATCH_HxPATCH_W inputs."""
         left1, _ = split_wing_regions(tiny_patch)
         left2, _ = split_wing_regions(circular_patch)
         f1 = hog_features(left1)
@@ -151,7 +151,7 @@ class TestPatchToHogVector:
         assert vec.ndim == 1
 
     def test_output_length_is_double_single_hog(self, tiny_patch):
-        """Concatenation of left+right HOG must be 2× single HOG length."""
+        """Concatenation of left+right HOG must be 2x single HOG length."""
         left, _ = split_wing_regions(preprocess_patch(tiny_patch))
         single_hog_len = len(hog_features(left))
         full_vec = patch_to_hog_vector(tiny_patch)
@@ -217,7 +217,7 @@ class TestPredictWingAngles:
         """
         Wing angles should be roughly in (0, pi) for real data.
         On synthetic patches the model was trained on synthetic data so
-        predictions may be outside this range — we just check finiteness.
+        predictions may be outside this range -- we just check finiteness.
         NOTE: accuracy on synthetic data does NOT represent real performance.
         """
         model_r, model_l = wing_models

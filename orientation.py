@@ -139,7 +139,7 @@ def _print_data_instructions(csv_path: str):
     print(f"  Expected file: {csv_path}")
     print()
     print("  CSV columns:")
-    print("    patch_path        -- path to a 64×64 grayscale PNG of the fly")
+    print("    patch_path        -- path to a 64x64 grayscale PNG of the fly")
     print("    moment_angle_rad  -- body-axis angle from image moments (radians)")
     print("    flip              -- 0 if angle is correct, 1 if pi must be added")
     print()
@@ -209,7 +209,7 @@ def extract_hog_features(patch: np.ndarray) -> np.ndarray:
     """
     Compute HOG features from a fly patch for ambiguity resolution.
 
-    The patch is resized to PATCH_H × PATCH_W before HOG computation so
+    The patch is resized to PATCH_H x PATCH_W before HOG computation so
     all feature vectors have the same length regardless of input size.
 
     HOG encodes local gradient orientations in overlapping blocks.  The
@@ -276,7 +276,7 @@ def train_disambiguation_model(patches: list,
     Train a PCA + LogisticRegression pipeline to predict flip (0 or 1).
 
     Why PCA?
-      HOG produces a high-dimensional vector (~3000+ dims for 64×64).
+      HOG produces a high-dimensional vector (~3000+ dims for 64x64).
       PCA reduces this to the top 30 principal components -- captures the
       dominant variance while preventing overfitting on small datasets.
 
@@ -621,7 +621,7 @@ def main(csv_path: str = DEFAULT_CSV, save_dir: str = "output"):
     print("=" * 58)
     print()
 
-    # ── Step 1: data check ───────────────────────────────────────────────────
+    # -- Step 1: data check ---------------------------------------------------
     has_data = check_for_labeled_data(csv_path)
 
     if not has_data:
@@ -634,26 +634,26 @@ def main(csv_path: str = DEFAULT_CSV, save_dir: str = "output"):
         print("         predict_orientation() will use Stage 1 only until then.")
         return
 
-    # ── Step 2: load data ────────────────────────────────────────────────────
+    # -- Step 2: load data ----------------------------------------------------
     print()
     print("[LOAD]  Reading labeled patches ...")
     patches, moment_angles, flips = load_labeled_data(csv_path)
     print(f"        {len(patches)} patches loaded  "
           f"(no-flip: {(flips==0).sum()}, flip: {(flips==1).sum()})")
 
-    # ── Step 3: train disambiguation model ──────────────────────────────────
+    # -- Step 3: train disambiguation model ----------------------------------
     print()
     print("[TRAIN] Extracting HOG features and fitting PCA + LogisticRegression ...")
     model, X_test, y_test, y_pred = train_disambiguation_model(patches, flips)
     expl = model.named_steps["pca"].explained_variance_ratio_.sum()
     print(f"        PCA: top 30 components retain {expl*100:.1f}% of variance.")
 
-    # ── Step 4: evaluate ─────────────────────────────────────────────────────
+    # -- Step 4: evaluate -----------------------------------------------------
     print()
     print("[EVAL]  Evaluating on held-out test set (25%) ...")
     acc = evaluate_disambiguation(y_test, y_pred, save_dir)
 
-    # ── Step 5: visualize a sample patch ────────────────────────────────────
+    # -- Step 5: visualize a sample patch ------------------------------------
     sample_patch  = patches[0]
     raw_angle     = moment_angles[0]
     resolved      = predict_orientation(sample_patch, model=model)
@@ -662,7 +662,7 @@ def main(csv_path: str = DEFAULT_CSV, save_dir: str = "output"):
                           has_disambiguation=True,
                           save_path=vis_path)
 
-    # ── Step 6: save ─────────────────────────────────────────────────────────
+    # -- Step 6: save ---------------------------------------------------------
     print()
     print("[SAVE]  Saving model ...")
     save_model(model)
