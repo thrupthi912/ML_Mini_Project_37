@@ -7,6 +7,7 @@ Frame-by-frame pipeline
 -----------------------
   1. Grayscale preprocessing + background subtraction   [preprocessing.py]
   2. Otsu threshold + contour extraction                [preprocessing.py]
+       (arena-aware: everything outside the detected circular arena is ignored)
   3. FlyCount  -- Decision Tree (zero / one / two flies) [fly_count.py]
   4. Orientation -- image moments baseline               [orientation.py]
        (Stage 2 HOG disambiguation when labeled model present)
@@ -57,6 +58,7 @@ import matplotlib.pyplot as plt
 from preprocessing import (
     make_synthetic_video, load_video, compute_background,
     read_frames, threshold_frame, extract_contours, contour_features,
+    detect_arena,
 )
 from fly_count import (
     load_model as load_fly_count_model,
@@ -170,7 +172,8 @@ def _module_summary(models: dict) -> str:
 
 def process_frame(frame: np.ndarray,
                   background: np.ndarray,
-                  models: dict) -> dict:
+                  models: dict,
+                  arena=None) -> dict:
     """
     Run the full analysis pipeline on one grayscale frame.
 
@@ -192,6 +195,13 @@ def process_frame(frame: np.ndarray,
     Errors inside any module call are caught per-contour so one bad
     contour never aborts the whole frame.
 
+    Parameters
+    ----------
+    frame      : grayscale uint8 frame
+    background : illumination map from compute_background() (or None)
+    models     : status dict from load_all_models()
+    arena      : (cx, cy, r) from detect_arena(), or None to use the full frame
+
     Returns
     -------
     dict with keys:
@@ -205,7 +215,7 @@ def process_frame(frame: np.ndarray,
         total_flies : int
         errors      : list of str  (non-fatal errors encountered)
     """
-    mask     = threshold_frame(frame, background)
+    mask     = threshold_frame(frame, background, arena=arena)
     contours = extract_contours(mask)
 
     labels, counts = [], []
@@ -532,10 +542,41 @@ def _print_frame_result(frame_idx: int, result: dict, fps: float):
 # TRAIN HELPERS
 # ???????????????????????????????????????????????????????????????????????????
 
-def train_fly_count():
-    """Train (or retrain) the FlyCount Decision Tree on synthetic data."""
+def train_all_models(input_dir: str = "input/images", save_dir: str = "output"):
+    """
+    Train all 4 pipeline stages using real labeled data if available,
+    falling back to synthetic data as appropriate.
+    """
     import fly_count
-    fly_count.main(data_csv=None, save_dir="output")
+    import sex_classification
+    import orientation
+    import wing_angle
+
+    fc_csv = os.path.join(input_dir, "fly_count_labels.csv")
+    sex_csv = os.path.join(input_dir, "sex_labels.csv")
+    ori_csv = os.path.join(input_dir, "orientation_labels.csv")
+    wing_csv = os.path.join(input_dir, "wing_labels.csv")
+
+    print("\n[TRAIN 1/4] Training FlyCount Decision Tree...")
+    fly_count.main(data_csv=fc_csv if os.path.isfile(fc_csv) else None, save_dir=save_dir)
+
+    print("\n[TRAIN 2/4] Training Sex Classifier...")
+    if os.path.isfile(sex_csv):
+        sex_classification.main(data_csv=sex_csv, save_dir=save_dir)
+    else:
+        print(f"  [MISS] {sex_csv} not found, skipping sex classifier training.")
+
+    print("\n[TRAIN 3/4] Training Orientation Disambiguation...")
+    if os.path.isfile(ori_csv):
+        orientation.main(data_csv=ori_csv, save_dir=save_dir)
+    else:
+        print(f"  [MISS] {ori_csv} not found, skipping orientation training.")
+
+    print("\n[TRAIN 4/4] Training Wing Angle Regression...")
+    if os.path.isfile(wing_csv):
+        wing_angle.main(data_csv=wing_csv, save_dir=save_dir)
+    else:
+        print(f"  [MISS] {wing_csv} not found, skipping wing angle training.")
 
 
 # ???????????????????????????????????????????????????????????????????????????
@@ -553,7 +594,7 @@ def main(video_path: str = None,
     Parameters
     ----------
     video_path  : path to an .mp4 file.  None -> synthetic demo video.
-    do_train    : if True, retrain FlyCount before running.
+    do_train    : if True, retrain models before running.
     max_frames  : number of frames to process.
     save_dir    : directory for all output files.
     display     : if True, show a live OpenCV window (needs a desktop).
@@ -566,9 +607,9 @@ def main(video_path: str = None,
 
     # -- Optional retrain ----------------------------------------------------
     if do_train:
-        print("\n[TRAIN] Retraining FlyCount model ...")
+        print("\n[TRAIN] Retraining pipeline models ...")
         try:
-            train_fly_count()
+            train_all_models(save_dir=save_dir)
         except Exception as e:
             print(f"  [WARN] Training failed: {e}")
 
@@ -610,11 +651,18 @@ def main(video_path: str = None,
           f"{props['frame_count']} total frames  |  "
           f"processing {max_frames}")
 
-    # -- Background model -----------------------------------------------------
+    # -- Background model + arena detection -----------------------------------
     print("\n[BG]    Computing background model ...")
-    n_bg = min(50, props["frame_count"])
+    n_bg  = min(50, props["frame_count"])
+    arena = None                       # stays None if the background fails
     try:
         background = compute_background(cap, n_samples=n_bg)
+        arena = detect_arena(background)
+        if arena is None:
+            print("  [INFO] Arena not detected -- using full frame.")
+        else:
+            print(f"  [OK]   Arena: centre=({arena[0]:.0f}, {arena[1]:.0f}), "
+                  f"r={arena[2]:.0f}px")
     except Exception as e:
         print(f"  [WARN] Background computation failed ({e}). Using None.")
         background = None
@@ -645,7 +693,7 @@ def main(video_path: str = None,
 
         # -- Analyse ---------------------------------------------------------
         try:
-            result = process_frame(frame, background, models)
+            result = process_frame(frame, background, models, arena=arena)
         except Exception as e:
             print(f"  [ERROR] Frame {frame_idx:04d} failed: {e}")
             traceback.print_exc()
